@@ -1,13 +1,19 @@
-from DB.table_data_base import Testing
 from DB.connection import Database
 
 db = Database()
 
-async def add_user():
+
+async def add_data_to_the_table(name_table, **kwargs):
     async with db.get_session() as session:
-        new_user = Testing (
-            name="GErw",
-            age=213,
-        )
-        session.add(new_user)
+        new_entry = name_table(**kwargs)
+        session.add(new_entry)
         await session.commit()
+
+
+async def completing_the_task(command):
+    try:
+        async with db.get_session() as session:
+            async with session.begin():
+                await session.execute(command)
+    except Exception as e:
+        print(e)

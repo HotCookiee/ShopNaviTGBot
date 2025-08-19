@@ -1,4 +1,4 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.config import POSTGRES_CONFIG
 
 class Database:
@@ -16,5 +16,6 @@ class Database:
 
     pass
 
-    def get_session(self):
+    def get_session(self) -> AsyncSession:
         return self.__instance.session_factory()
+

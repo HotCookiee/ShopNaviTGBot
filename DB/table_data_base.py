@@ -27,7 +27,7 @@ class User(__BASE):
     cart_items: Mapped[list["CartItems"]] = relationship(back_populates="user")
     admins: Mapped["Admin"] = relationship(back_populates="user")
     notifications: Mapped["Notification"] = relationship(back_populates="user")
-    order_statuses: Mapped["OrderStatus"] = relationship(back_populates="user")
+    support_message: Mapped["SupportMessage"] = relationship(back_populates="user")
 
 
 class Category(__BASE):
@@ -49,6 +49,7 @@ class Product(__BASE):
     price: Mapped[int] = mapped_column(nullable=False)
     photo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=True)
+    quantity: Mapped[int] = mapped_column(default=0, nullable=False)
 
     category: Mapped["Category"] = relationship(back_populates="products")
     cart_items: Mapped["CartItems"] = relationship(back_populates="product")
@@ -61,12 +62,11 @@ class Order(__BASE):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     registration_date: Mapped[date] = mapped_column(Date, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False , default="Подготовка")
     delivery_address: Mapped[str] = mapped_column(default="Не указано")
     total_amount: Mapped[str] = mapped_column(String(150), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="orders")
-    order_statuses: Mapped["OrderStatus"] = relationship(back_populates="order")
     order_items: Mapped[list["OrderItems"]] = relationship(back_populates="order")
 
 
@@ -107,29 +107,22 @@ class Admin(__BASE):
     name: Mapped[str] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="admins")
-    support_messages: Mapped[list["SupportMessage"]] = relationship(back_populates="admin")
-
-
-class Statuscode(__BASE):
-    __tablename__ = "status_code"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str] = mapped_column(String(200), nullable=False)
-    numeric_value: Mapped[int] = mapped_column(nullable=False)
-
-    order_statuses: Mapped["OrderStatus"] = relationship(back_populates="status_code")
 
 
 class SupportMessage(__BASE):
     __tablename__ = "support_messages"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
-    message: Mapped[str] = mapped_column(String(1000), nullable=True)
-    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=True)
-    admin_id: Mapped[int] = mapped_column(ForeignKey("admins.id"), nullable=True)
+    user_requests: Mapped[str] = mapped_column(String(1000), nullable=False)
+    date_the_request_was_created: Mapped[date] = mapped_column(Date, default=date.today, nullable=True)
+    admin_id: Mapped[int] = mapped_column(nullable=True)
+    time_answer: Mapped[date] = mapped_column(Date, nullable=True)
+    admin_answer: Mapped[str] = mapped_column(String(), nullable=True)
+    application_status: Mapped[str] = mapped_column(String(50), nullable=True, default='В обработке')
+    user_telegram_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"), nullable=False)
 
-    admin: Mapped["Admin"] = relationship(back_populates="support_messages")
+    user: Mapped["User"] = relationship(back_populates="support_message")
+
 
 
 class Notification(__BASE):
@@ -144,18 +137,6 @@ class Notification(__BASE):
     user: Mapped["User"] = relationship(back_populates="notifications")
 
 
-class OrderStatus(__BASE):
-    __tablename__ = "order_statuses"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=True)
-    status_code_id: Mapped[int] = mapped_column(ForeignKey("status_code.id"), nullable=True)
-
-    user: Mapped["User"] = relationship(back_populates="order_statuses")
-    order: Mapped["Order"] = relationship(back_populates="order_statuses")
-    status_code: Mapped["Statuscode"] = relationship(back_populates="order_statuses")
 
 # endregion
-
-
