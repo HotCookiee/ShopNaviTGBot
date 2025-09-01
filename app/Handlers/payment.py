@@ -20,31 +20,11 @@ router_payment = Router()
 
 
 @router_payment.message(F.text == "✅ Оформление заказа")
-async def payment_message(message: Message, state: FSMContext):
-    data = await state.get_data()
-    await get_user_cart(data.get('user_id'), message=message, state=state)
-
-
-@router_payment.callback_query(F.data == "proceed_to_payment")
-async def payment_callback(query: CallbackQuery, state: FSMContext):
-    await  payment_message(query.message, state)
-
-
-async def get_user_cart(user_id: int, state: FSMContext, message: Message):
-    user_cart = await get_basket(user_id)
-    user_check = f"Товары которые вы хотите приобрести: {user_cart}"
-    try:
-        await message.edit_text(user_check, reply_markup=payment_info_keyboard, parse_mode="Markdown")
-    except:
-        await message.answer(user_check, reply_markup=payment_info_keyboard, parse_mode="Markdown")
-
-
-@router_payment.callback_query(F.data == "go_payment")
-async def start_payment(callback: CallbackQuery, bot: Bot, state: FSMContext):
+async def payment_message(message: Message, state: FSMContext,bot: Bot):
     user_cart = await get_info_from_user_cart(state=state)
 
     await  bot.send_invoice(
-        chat_id=callback.from_user.id,
+        chat_id=message.chat.id,
         title="Выберете способ оплаты",
         description="Если у вам не работает кнопка оплатить через телеграм, нажмите на кнопку получить ссылку для оплаты.",
         payload="case_123",
@@ -54,6 +34,19 @@ async def start_payment(callback: CallbackQuery, bot: Bot, state: FSMContext):
         start_parameter="buy_case",
         reply_markup=payment_main
     )
+
+
+@router_payment.callback_query(F.data == "proceed_to_payment")
+async def payment_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await payment_message(callback.message, state=state, bot=bot)
+
+async def get_user_cart(user_id: int, state: FSMContext, message: Message):
+    user_cart = await get_basket(user_id)
+    user_check = f"Товары которые вы хотите приобрести: {user_cart}"
+    try:
+        await message.edit_text(user_check, reply_markup=payment_info_keyboard, parse_mode="Markdown")
+    except:
+        await message.answer(user_check, reply_markup=payment_info_keyboard, parse_mode="Markdown")
 
 
 @router_payment.pre_checkout_query()
@@ -95,7 +88,7 @@ async def payment_success_from_telegram(message: Message, state: FSMContext):
     payment_info = message.successful_payment
     await add_result_from_db(message=message, state=state, total_amount=str(payment_info.total_amount))
     await message.answer(
-        "Покупка успешно совершена.В течении 40 дней доставка товар будет доставлен в ближайший ПВЗ от указанного адреса.\nПри доставке вам позвонят уведомления")
+        "Покупка успешно совершена.В течении 40 дней доставка товар будет доставлен в ближайший ПВЗ от указанного адреса.\nПри доставке вам позвонят")
 
 
 @router_payment.callback_query(F.data == "go_payment_from_url")
@@ -129,7 +122,6 @@ async def payment_success(chat_id: int, user_id: int, state: FSMContext) -> tupl
             "metadata": {"chat_id": chat_id, "user_id": user_id}
         }, id_key)
 
-        # Сохраняем именно payment.id и обе суммы
         await state.update_data(
             PaymentID=payment.id,
             AmountKopecks=total_kopecks,

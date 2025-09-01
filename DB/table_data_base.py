@@ -47,7 +47,7 @@ class Product(__BASE):
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(String(150), nullable=True)
     price: Mapped[int] = mapped_column(nullable=False)
-    photo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    photo: Mapped[str] = mapped_column(String(), nullable=False)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=True)
     quantity: Mapped[int] = mapped_column(default=0, nullable=False)
 

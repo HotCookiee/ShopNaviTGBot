@@ -39,3 +39,32 @@ admin_support_inline_keyboard = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="🔥 Активные заявки", callback_data="active_support"),InlineKeyboardButton(text="🗄 Архив", callback_data="archive_of_applications")],
     ]
 )
+
+select_product_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="Добавить новый продукт",callback_data="add_product"),InlineKeyboardButton(text="Удалить продукт по ID", callback_data="delete_product_by_id")],
+    ]
+)
+select_products_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="⏪", callback_data="previous_product"),InlineKeyboardButton(text="⏩", callback_data="next_product")],
+    ]
+)
+select_order_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text= "✅ Выполнить",callback_data="perform_order")],
+        [InlineKeyboardButton(text="⏪", callback_data="previous_order"),InlineKeyboardButton(text="⏩", callback_data="next_order")],
+    ]
+)
+confirmation_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="✅", callback_data="confirmation_true"),InlineKeyboardButton(text="❌", callback_data="confirmation_false")],
+    ]
+)
+
+continue_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="Начать", callback_data="continue_true")],
+    ]
+)
+

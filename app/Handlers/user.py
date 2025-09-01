@@ -10,6 +10,7 @@ from DB.connection import Database
 from app.Handlers.db_hendlers import completing_the_task
 from app.keyboards.user import changing_personal_data
 from app.states import UserInfo
+import app.templates as templates
 
 router_user = Router()
 
@@ -31,6 +32,16 @@ async def user_menu(message: Message, state: FSMContext):
             await state.update_data(orders_count=current_count)
 
     data = await state.get_data()
+    answer = templates.user_msg_tpl.format(
+        user_name=data.get('first_name', '—'),
+        orders=data.get('orders_count', 0),
+        vip_status = 'Нет' if data.get('vip_status') is False else 'Активен',
+        number = data.get('number', '—'),
+        email = data.get('email', '—'),
+        delivery_address = data.get('delivery_address', '—'),
+        data_registered = data.get('date_registory', '—')
+    )
+
     profile_text = (
         "👤  *МОЙ ПРОФИЛЬ*\n"
         "━━━━━━━━━━━\n"
@@ -46,7 +57,7 @@ async def user_menu(message: Message, state: FSMContext):
         f"🔔 Уведомления: {data.get('notification', '—')}"
     )
 
-    await message.answer(profile_text, parse_mode="Markdown", reply_markup=changing_personal_data)
+    await message.answer(answer, parse_mode="Markdown", reply_markup=changing_personal_data)
 
 
 def check_email(email: str):

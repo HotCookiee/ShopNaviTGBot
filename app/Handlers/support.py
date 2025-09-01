@@ -9,38 +9,13 @@ from DB.connection import Database
 from DB.table_data_base import SupportMessage
 from app.keyboards.support import support_inline_keyboard, select_support_inline_keyboard
 from app.states import ContactingSupport
+import app.templates as templates
 
 router_support = Router()
 
-response_template = "Номер заявки: {support_id}\n\n\nСтатус заявки: {support_state}\n\nДата создания заявки: {date_the_request_was_created}\n\nДата ответа: {time_answer}\n\nВаше обращение:\n{user_requests}\n\nОтвет на ваше обращение: \n{admin_answer}\n\n"
-user_support = """🛠️ Центр поддержки
-Добро пожаловать в раздел поддержки!
-
-Здесь вы можете оставить одно обращение по волнующему вас вопросу. После отправки администратор даст один ответ, после чего заявка будет закрыта.
-
-❗ Важно: Пожалуйста, постарайтесь изложить суть проблемы максимально подробно и ясно, чтобы мы могли помочь вам быстрее.
-
-📋 Что нужно сделать:
-
-Опишите проблему в текстовом поле ниже.
-
-Нажмите кнопку «Отправить».
-
-Ожидайте ответа администратора в течение разумного времени.
-
-После ответа вы сможете:
-
-Просмотреть заявку и ответ.
-
-Вернуться в главное меню или создать новую заявку.
-
-🕓 Ограничение: Одно сообщение на заявку и один ответ от поддержки.
-
-Мы рады помочь вам! Спасибо, что пользуетесь нашим сервисом 💙"""
-
 @router_support.message(F.text == "💬 Поддержка")
 async def support_main(message: Message, state: FSMContext):
-    await message.answer(user_support, reply_markup=support_inline_keyboard)
+    await message.answer(templates.user_support_info_msg, reply_markup=support_inline_keyboard)
 
 
 @router_support.callback_query(F.data == "contact_support")
@@ -76,9 +51,8 @@ async def viewing_applications(callback_data: CallbackQuery, state: FSMContext):
         ))
         complaint = result_select_complaint_quantity.scalars().all()
         await state.update_data(ListSupport = complaint)
-
     await callback_data.message.edit_text(
-        text=response_template.format(
+        text=templates.support_user_msg_tpl.format(
             support_id=f"`{complaint[0].id}`",
             support_state=f"`{complaint[0].application_status}`",
             date_the_request_was_created=f"`{complaint[0].date_the_request_was_created}`",
@@ -124,13 +98,12 @@ async def previous_complaint(callback: CallbackQuery, state: FSMContext):
 
 
 
-
 async def edit_the_complaint(callback_data: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     complaint = data["ListSupport"]
     new_page_support = data.get("SelectSupport")
     await callback_data.message.edit_text(
-        text=response_template.format(
+        text=templates.support_user_msg_tpl.format(
             support_id=f"`{complaint[new_page_support].id}`",
             support_state=f"`{complaint[new_page_support].application_status}`",
             date_the_request_was_created=f"`{complaint[new_page_support].date_the_request_was_created}`",

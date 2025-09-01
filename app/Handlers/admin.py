@@ -2,18 +2,20 @@ import re
 from datetime import datetime
 from functools import wraps
 
-from aiogram import Router, F
+from aiogram import Router, F, Bot
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import text
+from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import select, update
+from sqlalchemy.sql import select, update, delete
 
+import app.keyboards.admin as admin_keyboards
+import app.states as states
+import app.templates as templates
 from DB.connection import Database
-from DB.table_data_base import Admin, User, SupportMessage
-from app import states
-from app.keyboards.admin import admin_panel_keyboard, main_admin_keyboard, moder_user_keyboard, select_user_keyboard, \
-    admin_support_inline_keyboard, select_active_support_keyboard
+from DB.table_data_base import Admin, User, SupportMessage, Product, Order
 from app.keyboards.user import main_menu
 
 router_admin = Router()
@@ -61,16 +63,12 @@ async def verifying_access_from_the_user(message: Message, state: FSMContext):
             result = result_check.scalar_one_or_none()
             if result is None or result.telegram_id != message.from_user.id:
                 raise AdminAccessError()
-            await message.answer("✨ Авторизация прошла успешно!!"
-                                 "\nРады приветствовать вас в <b>Админ‑панели</b> 🛡"
-                                 "\n📂 Управлять активными заявками и архивом"
-                                 "\n💬 Отвечать пользователям прямо из центра поддержки"
-                                 "\n🛠 Настраивать магазин и контролировать процессы",
-                                 reply_markup=admin_panel_keyboard, parse_mode="HTML")
+            await message.answer(templates.welcome_admin_msg,
+                                 reply_markup=admin_keyboards.admin_panel_keyboard, parse_mode="HTML")
         except AdminAccessError:
-            await message.answer("⛔️ У вас нет доступа к админ-панели.", reply_markup=main_menu)
+            await message.answer(templates.not_admin_msg, reply_markup=main_menu)
         except Exception as e:
-            await  message.answer(f"Возникла неизвестная ошибка: {e}", reply_markup=main_menu)
+            await  message.answer(templates.error_msg.format(error=e), reply_markup=main_menu)
 
 
 @router_admin.message(F.text == "🧮 Выполнить SQL запрос")
@@ -78,27 +76,7 @@ async def verifying_access_from_the_user(message: Message, state: FSMContext):
 async def admin_sql(message: Message, state: FSMContext):
     await state.set_state(states.Admin.InputSQLCommand)
     await message.answer(
-        "<b>Введите SQL‑запрос, соответствующий требованиям:</b>\n"
-        "• Не использовать сложные запросы — только для анализа и небольшого редактирования.\n"
-        "• Разрешённые команды: <code>INSERT</code>, <code>SELECT</code>, <code>UPDATE</code>\n"
-        "• Для выхода напишите: <code>exit</code>\n\n"
-        "<b>Доступные таблицы:</b>"
-        "<code>admins</code>,"
-        "<code>cart_items</code>,"
-        "<code>categories</code>,"
-        "<code>notifications</code>,"
-        "<code>order_items</code>,"
-        "<code>orders</code>,"
-        "<code>products</code>,"
-        "<code>support_messages</code>,"
-        "<code>users.\n</code>"
-        "<b>Шаблоны</b>\n"
-        "<b>Select</b>\n"
-        "<pre>SELECT column1, column2\nFROM table_name\nWHERE id = 123;\n</pre>"
-        "<b>Update</b>\n"
-        "<pre>UPDATE table_name\nSET column1 = 'new_value'\nWHERE id = 123;\n</pre>"
-        "<b>Insert</b>\n"
-        "<pre>INSERT INTO table_name (column1, column2)\nVALUES ('value1', 'value2');</pre>",
+        templates.sql_commands_info_msg,
         parse_mode="HTML"
     )
 
@@ -141,24 +119,125 @@ async def execute_sql_command(message: Message, state: FSMContext):
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
     await state.set_state()
-    await message.answer("Вы вышли из режима админ панели", reply_markup=main_admin_keyboard)
+    await message.answer("Вы вышли из режима админ панели", reply_markup=admin_keyboards.main_admin_keyboard)
 
 
 @router_admin.message(F.text == "📨 Поддержка")
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
-    await message.answer("📍 Центр поддержки Вы находитесь в административном разделе поддержки.\n"
-                         "\nВыберите, с чем хотите работать прямо сейчас:"
-                         "\n📂 Архив обращений — просмотр и поиск уже закрытых заявок."
-                         "\n🔔 Активные обращения — заявки, которые ждут вашего ответа или действий."
-                         "\n<i>Нажмите на нужный раздел, чтобы перейти к списку и продолжить работу.</i>",
-                         reply_markup=admin_support_inline_keyboard,parse_mode="HTML")
+    await message.answer(templates.welcome_admin_msg,
+                         reply_markup=admin_keyboards.admin_support_inline_keyboard, parse_mode="HTML")
 
 
 @router_admin.message(F.text == "👥 Пользователи")
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
-    await message.answer("Выберете действия", reply_markup=moder_user_keyboard)
+    await message.answer("Выберете действия", reply_markup=admin_keyboards.moder_user_keyboard)
+
+
+@router_admin.message(F.text == "📦 Товары")
+async def exit_from_admin_panel(message: Message):
+    await message.answer("Выберете действия", reply_markup=admin_keyboards.select_product_keyboard)
+
+
+@router_admin.message(F.text == "📋 Заказы")
+@check_admin
+async def exit_from_admin_panel(message: Message, state: FSMContext):
+    temp_keyboard = admin_keyboards.select_order_keyboard
+    async with Database().get_session() as session:
+        list_order_result = await session.execute(
+            select(Order).order_by(Order.status))
+        await state.update_data(ListOrder=list_order_result.scalars().all())
+        await state.update_data(SelectedOrder=0)
+
+    data = await state.get_data()
+    one_order: Order = data["ListOrder"][data["SelectedOrder"]]
+    print(one_order)
+    answer = templates.order_msg_tpl.format(
+        id=one_order.id,
+        user_id=one_order.user_id,
+        registration_date=one_order.registration_date,
+        status=one_order.status,
+        total_amount=one_order.total_amount
+    )
+    await message.answer(text=answer, parse_mode="HTML", reply_markup=admin_keyboards.select_order_keyboard)
+
+
+#
+# @router_admin.callback_query(F.data.in_({"view_ditail"}))
+# async def view_ditail_order(query: CallbackQuery, state: FSMContext):
+#     state = await state.get_data()
+#     async with Database().get_session() as session:
+#         order: Order = state["ListOrder"][state["SelectedOrder"]]
+#         get_item_form_order = await session.execute(select(OrderItems).where(OrderItems.order_id == order.id))
+#         items = get_item_form_order.scalars().all()
+
+@router_admin.callback_query(F.data.in_({"perform_order"}))
+async def perform_order(query: CallbackQuery, state: FSMContext):
+    state = await state.get_data()
+    async with Database().get_session() as session:
+        order: Order = state["ListOrder"][state["SelectedOrder"]]
+        if order.status == "Выполнено":
+            await query.answer("Заказ уже выполнен")
+            return
+
+        await session.execute(update(Order).where(Order.id == order.id).values(status="Выполнено"))
+        await session.commit()
+        await query.answer("✅ Заказ выполнен ")
+
+
+@router_admin.callback_query(F.data.in_({"previous_order", "next_order"}))
+async def order_navigation(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    select_order = data.get("SelectOrder", 0)
+    total_orders = len(data.get("ListOrder", []))
+
+    if callback.data == "next_order":
+        if select_order < total_orders - 1:
+            select_order += 1
+        else:
+            await callback.answer("Выход за пределы", show_alert=False)
+            return
+    else:
+        if select_order > 0:
+            select_order -= 1
+        else:
+            await callback.answer("Выход за пределы", show_alert=False)
+            return
+    await state.update_data(SelectOrder=select_order)
+    data = await state.get_data()
+    select_order = data.get("SelectOrder")
+    list_order = data.get("ListOrder")
+    order: Order = list_order[select_order]
+    answer = templates.order_msg_tpl.format(
+        id=order.id,
+        user_id=order.user_id,
+        registration_date=order.registration_date,
+        status=order.status,
+        total_amount=order.total_amount
+    )
+    new_button = InlineKeyboardButton(
+        text=f"{select_order + 1}-{len(data.get('ListOrder'))}",
+        callback_data="None"
+    )
+    rows = list(admin_keyboards.select_order_keyboard.inline_keyboard)
+
+    while len(rows) < 2:
+        rows.append([])
+
+    if len(rows[1]) <= 2:
+        rows[1].insert(1, new_button)
+    else:
+        rows[1][1] = new_button
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+
+    await callback.message.edit_text(
+        text=answer,
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )
+    await callback.answer()
 
 
 @router_admin.callback_query(F.data.in_({"all_user", "previous_user", "next_user"}))
@@ -195,20 +274,9 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
     list_user = data.get("ListUser")
     user: User = list_user[select_user]
 
-    profile_text = (
-        "👤  *Профиль пользователя {user_name}*\n"
-        "━━━━━━━━━━━\n"
-        "🛒 Заказов: {orders}\n"
-        "✨ VIP-статус: {vip_status}\n"
-        "━━━━━━━━━━━\n"
-        "📱 Телефон: `+{number}`\n"
-        "✉️ Email: `{email}`\n"
-        "🏠 Адрес доставки: `{delivery_address}`\n"
-        "━━━━━━━━━━━\n"
-        "📅 Зарегистрирован: `{data_registered}`\n"
-    )
 
-    answer = profile_text.format(
+
+    answer = templates.user_msg_tpl.format(
         user_name=user.first_name,
         orders=len(user.orders),
         vip_status=user.vip_status,
@@ -222,7 +290,7 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
         callback_data="None"
     )
 
-    rows = list(select_user_keyboard.inline_keyboard)
+    rows = list(admin_keyboards.select_user_keyboard.inline_keyboard)
 
     while len(rows) < 2:
         rows.append([])
@@ -246,13 +314,7 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
     F.data.in_({"active_support", "archive_of_applications", "previous_active_support", "next_active_support"}))
 async def view_active_support(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    answer = (
-        "<b>id жалобы</b>: <code>{id_support}</code>\n"
-        "<b>user_id</b>: <code>{user_telegram_id}</code>\n"
-        "<b>Дата создания</b>: <code>{date_the_request_was_created}</code>\n"
-        "<b>Статус обращения</b>: <code>{status_support}</code>\n"
-        "<b>Обращение</b>:\n {user_request}"
-    )
+
 
     if callback.data in {"active_support", "archive_of_applications"}:
         async with Database().get_session() as session:
@@ -294,7 +356,7 @@ async def view_active_support(callback: CallbackQuery, state: FSMContext):
     list_support = data.get("ListSupport")
     info_support = list_support[select_support]
 
-    answer = answer.format(
+    answer = templates.support_admin_msg_tpl.format(
         id_support=str(info_support.id),
         user_telegram_id=str(info_support.user_telegram_id),
         date_the_request_was_created=str(info_support.date_the_request_was_created),
@@ -303,7 +365,7 @@ async def view_active_support(callback: CallbackQuery, state: FSMContext):
     )
     new_button = InlineKeyboardButton(text=f"{select_support + 1}-{len(list_support)}", callback_data="None")
 
-    rows = list(select_active_support_keyboard.inline_keyboard)
+    rows = list(admin_keyboards.select_active_support_keyboard.inline_keyboard)
 
     while len(rows) < 2:
         rows.append([])
@@ -313,12 +375,12 @@ async def view_active_support(callback: CallbackQuery, state: FSMContext):
     else:
         rows[1][1] = new_button
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+    temp_keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     await callback.message.edit_text(
         text=answer,
         parse_mode="HTML",
-        reply_markup=keyboard
+        reply_markup=temp_keyboard
     )
 
 
@@ -338,7 +400,7 @@ async def answer_admin_from_support(callback: CallbackQuery, state: FSMContext):
 
 
 @router_admin.message(states.Admin.AnswerAdminFromSupport)
-async def answer_admin_from_support(message: Message, state: FSMContext):
+async def answer_admin_from_support(message: Message, state: FSMContext, bot: Bot):
     if message.text == "cansel answer":
         await message.edit_text(text="Вы вышли из режима ответов на обращения")
         return
@@ -349,7 +411,6 @@ async def answer_admin_from_support(message: Message, state: FSMContext):
         get_admin_id = await session.execute(
             select(Admin.id).
             where(Admin.telegram_id == message.from_user.id))
-
         admin_id = get_admin_id.scalar()
         time_answer = datetime.today()
         admin_answer = message.text
@@ -366,4 +427,132 @@ async def answer_admin_from_support(message: Message, state: FSMContext):
             values(**answer))
         await session.commit()
         await state.set_state()
+        await bot.send_message(234, "123")
         await message.answer("Успешно!")
+
+
+@router_admin.callback_query(F.data == "delete_product_by_id")
+async def del_product_by_id(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await callback.answer("Введите ID продукта который хотите удалить")
+    await state.set_state(states.Admin.GetIDProduct)
+
+
+@router_admin.callback_query(F.data == "add_product")
+async def add_product(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await callback.message.edit_text(text=templates.add_product_intro_msg, parse_mode="HTML",
+                                     reply_markup=admin_keyboards.continue_keyboard)
+
+
+@router_admin.message(states.Admin.GetIDProduct)
+async def delete_product(message: Message, state: FSMContext, bot: Bot):
+    try:
+        product_id = int(message.text.strip())
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректный числовой ID.")
+        return
+
+    async with Database().get_session() as session:
+        result = await session.execute(
+            select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
+        )
+        product_info: Product = result.scalar_one_or_none()
+        if product_info is None:
+            await message.answer("Был указан несуществующий ID.")
+        else:
+            await state.update_data(IDDeleteTheProduct=product_id)
+            answer_msg = templates.product_msg_tpl.format(id=product_info.id,
+                                                          name=product_info.name,
+                                                          quantity=product_info.quantity,
+                                                          category=product_info.category)
+
+            await message.answer(
+                text=(
+                    "<b>Вы подтверждаете удаление продукта из базы данных:</b>\n\n"
+                    f"{answer_msg}\n"
+                    "❗ Это действие необратимо. Подтвердите удаление:"
+                ),
+                reply_markup=admin_keyboards.confirmation_keyboard,
+                parse_mode="HTML"
+            )
+        await state.set_state(states.Admin.Choice)
+
+
+@router_admin.callback_query(StateFilter(states.Admin.Choice), F.data.in_({"confirmation_true", "confirmation_false"}))
+async def choice(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    data = callback.data
+    st = await state.get_data()
+    if data == "confirmation_true":
+        async with Database().get_session() as session:
+            await session.execute(delete(Product).where(Product.id == st.get("IDDeleteTheProduct")))
+            await callback.message.edit_text("Удаление прошло успешно",
+                                             reply_markup=admin_keyboards.select_product_keyboard)
+            await session.commit()
+            await state.set_state()
+    elif data == "confirmation_false":
+        await callback.message.edit_text("Удаление отменено", reply_markup=admin_keyboards.select_product_keyboard)
+        await state.set_state()
+    else:
+        await callback.message.answer("ERROR", reply_markup=None)
+
+
+@router_admin.callback_query(F.data == "continue_true")
+async def start_adding(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await callback.message.answer("Этап 1: Укажите имя товара")
+    await state.set_state(states.AddProduct.ProductName)
+
+
+@router_admin.message(states.AddProduct.ProductName)
+async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+    await state.update_data(ProductName=message.text)
+    await message.answer("тап 2: Укажите описание товара")
+    await state.set_state(states.AddProduct.ProductDescription)
+
+
+@router_admin.message(states.AddProduct.ProductDescription)
+async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+    await state.update_data(ProductDescription=message.text)
+    await message.answer("Этап 3: Укажите цену товара")
+    await state.set_state(states.AddProduct.ProductPrice)
+
+
+@router_admin.message(states.AddProduct.ProductPrice)
+async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+    await state.update_data(ProductPrice=message.text)
+    await message.answer("Этап 4: Укажите категорию товара")
+    await state.set_state(states.AddProduct.ProductCategory)
+
+
+@router_admin.message(states.AddProduct.ProductCategory)
+async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+    await state.update_data(ProductCategory=message.text)
+    await message.answer("Этап 5: Отправте фото товара")
+    await state.set_state(states.AddProduct.ProductPhoto)
+
+
+@router_admin.message(states.AddProduct.ProductPhoto)
+async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+    if message.photo:
+        await state.update_data(ProductPhoto=message.photo[-1].file_id)
+    else:
+        await message.answer("❗ Пожалуйста, отправьте фото как изображение, а не как файл.")
+    await completion_creation(message, state, bot)
+
+
+async def completion_creation(message: Message, state: FSMContext, bot: Bot):
+    st = await state.get_data()
+    temp_product_info = {
+        "name": st.get("ProductName"),
+        "description": st.get("ProductDescription"),
+        "price": int(st.get("ProductPrice")),
+        "category_id": int(st.get("ProductCategory")),
+        "photo": st.get("ProductPhoto"),
+    }
+
+    async with Database().get_session() as session:
+        await session.execute(insert(Product).values(**temp_product_info))
+        await session.commit()
+
+    await message.answer("Продукт успешно создан!")
+
+    await message.answer_photo(caption="234wer", photo=temp_product_info['photo'])
+    await state.set_state()

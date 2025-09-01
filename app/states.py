@@ -51,6 +51,16 @@ class Admin(StatesGroup):
     ListUser = State()
     SelectSupport = State()
     ListSupport = State()
+    IDDeleteTheProduct = State()
     AnswerAdminFromSupport = State()
+    GetIDProduct = State()
+    Choice = State()
+    SelectOrder = State()
+    ListOrder = State()
 
-
+class AddProduct(StatesGroup):
+    ProductName = State()
+    ProductDescription = State()
+    ProductPrice = State()
+    ProductCategory = State()
+    ProductPhoto = State()

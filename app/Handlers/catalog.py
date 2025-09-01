@@ -1,19 +1,19 @@
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InputMediaPhoto
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.sql import update, select
 
 from DB.connection import Database
-from DB.table_data_base import CartItems
+from DB.table_data_base import CartItems, Product
 from app.Tools.catalog import load_keyboard_category, get_products_by_category, get_name_category
+from app.keyboards.admin import main_admin_keyboard
 from app.keyboards.cotalog import the_main_menu_of_the_catalog_reply, add_to_cart_button, product_template
 from app.keyboards.user import main_menu
-from app.states import InputUserQuantity
+import app.templates as templates
 
 router_catalog = Router()
 
-PRODUCT_CATEGORY = "Вы выбрали категорию: {category}\n{name_product}\nОписание товара: {description}\nДоступно в количестве: {quantity}\nСтоимость: {price}"
 
 
 @router_catalog.message(F.text == "🛒 Каталог товаров")
@@ -29,8 +29,11 @@ async def main_catalog(message: Message):
 
 
 @router_catalog.message(F.text == "⬅️ Выйти в главное меню")
-async def exit_catalog(message: Message):
-    await message.answer(text="Вы вернулись в главное меню", reply_markup=main_menu)
+async def exit_catalog(message: Message, state: FSMContext):
+    data = await state.get_data()
+    keyboard = main_admin_keyboard if data.get("role") == "admin" else main_menu
+
+    await message.answer(text="Вы вернулись в главное меню", reply_markup=keyboard)
 
 
 @router_catalog.callback_query(F.data.regexp(r'^ID_cat_[0-9]+$'))
@@ -63,16 +66,23 @@ async def main_catalog_callback(query: CallbackQuery, state: FSMContext):
     else:
         product_template.inline_keyboard[1][1] = new_button
 
-    selected_product = state_data.get("ListProduct")[selected_page - 1]
-    new_product = PRODUCT_CATEGORY.format(
-        category=state_data.get("Category"),
-        description=selected_product.description,
-        quantity=selected_product.quantity,
-        name_product=selected_product.name,
-        price=selected_product.price
+    selected_product: Product = state_data.get("ListProduct")[selected_page - 1]
+    caption = templates.product_msg_tpl.format(
+        name = selected_product.name,
+        id = selected_product.id,
+        description = selected_product.description,
+        price = selected_product.price,
+        quantity = selected_product.quantity,
+        category = state_data.get("Category"),
     )
     await query.answer('')
-    await query.message.edit_text(new_product, reply_markup=product_template)
+
+    await query.message.edit_media(InputMediaPhoto(
+        media=selected_product.photo,
+        caption=caption,
+        parse_mode="HTML",
+
+    ),reply_markup=product_template)
 
 
 @router_catalog.callback_query(F.data.in_(['next', 'back']))
@@ -92,21 +102,26 @@ async def viewing_products(query: CallbackQuery, state: FSMContext):
                             ProductPrice=selected_product.price,
                             Quantity=selected_product.quantity,
                             )
-
-    new_product = PRODUCT_CATEGORY.format(
-        category=state_data.get("Category"),
-        description=selected_product.description,
-        quantity=selected_product.quantity,
-        name_product=selected_product.name,
-        price=selected_product.price
-    )
-
     new_button = InlineKeyboardButton(text=f"{selected_page}-{state_data.get("MaxPage")}",
                                       callback_data="number_page")
 
     product_template.inline_keyboard[1][1] = new_button
+
+    caption = templates.product_msg_tpl.format(
+        name = selected_product.name,
+        id = selected_product.id,
+        description = selected_product.description,
+        price = selected_product.price,
+        quantity = selected_product.quantity,
+        category = state_data.get("Category"),
+    )
+
     await query.answer('')
-    await query.message.edit_text(new_product, reply_markup=product_template)
+    await query.message.edit_media(InputMediaPhoto(
+        media=selected_product.photo,
+        caption=caption,
+        parse_mode="HTML",
+    ),reply_markup=product_template)
 
 
 @router_catalog.callback_query(F.data == "update_new_category")
@@ -150,33 +165,36 @@ async def add_products(query: CallbackQuery, state: FSMContext):
         product_id = state_data.get("ProductID", 0)
         if quantity.isdigit():
             quantity_int = int(quantity)
-
-            result = await session.execute(
+            product_quantity_result = await session.execute(select(Product.quantity).where(Product.id == product_id))
+            product_quantity = product_quantity_result.scalar()
+            new_quantity = product_quantity - int(quantity)
+            if new_quantity < 0:
+                await query.answer("Вы пытаетесь добавить в корзину больше чем есть на складе.", show_alert=True)
+                return
+            update_quantity_from_product = update(Product).where(Product.id == product_id).values(quantity=new_quantity)
+            cart_items_result = await session.execute(
                 select(CartItems).where(
                     CartItems.user_id == user_id,
                     CartItems.product_id == product_id
                 )
             )
-            product = result.scalars().first()
+            product = cart_items_result.scalars().first()
 
             if product:
-                new_quantity = product.quantity + quantity_int
+                add_quantity = product.quantity + quantity_int
 
-                end_command = update(CartItems).where(
+                add_product_to_cart = update(CartItems).where(
                     CartItems.id == product.id
-                ).values(quantity=new_quantity)
+                ).values(quantity=add_quantity)
 
-                print(f"Вы увеличили этот товар в своей корзине на {quantity}")
             else:
-                end_command = insert(CartItems).values(
+                add_product_to_cart = insert(CartItems).values(
                     user_id=user_id,
                     product_id=product_id,
                     quantity=quantity_int
                 )
-                print(f"Это новый товар в вашей корзине")
 
-        if end_command is not None:
-            await session.execute(end_command)
+        if add_product_to_cart is not None:
+            await session.execute(add_product_to_cart)
+            await session.execute(update_quantity_from_product)
             await session.commit()
-
-
