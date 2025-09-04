@@ -3,14 +3,14 @@ import re
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy import update,select
+from sqlalchemy import update, select
 
-from DB.table_data_base import User,Order
+import app.templates as templates
 from DB.connection import Database
+from DB.table_data_base import User, Order
 from app.Handlers.db_hendlers import completing_the_task
 from app.keyboards.user import changing_personal_data
 from app.states import UserInfo
-import app.templates as templates
 
 router_user = Router()
 
@@ -35,26 +35,11 @@ async def user_menu(message: Message, state: FSMContext):
     answer = templates.user_msg_tpl.format(
         user_name=data.get('first_name', '—'),
         orders=data.get('orders_count', 0),
-        vip_status = 'Нет' if data.get('vip_status') is False else 'Активен',
-        number = data.get('number', '—'),
-        email = data.get('email', '—'),
-        delivery_address = data.get('delivery_address', '—'),
-        data_registered = data.get('date_registory', '—')
-    )
-
-    profile_text = (
-        "👤  *МОЙ ПРОФИЛЬ*\n"
-        "━━━━━━━━━━━\n"
-        f"🛒 Заказов: {data.get('orders_count', 0)}\n"
-        f"✨ VIP-статус: {'Нет' if data.get('vip_status') is False else 'Активен'}\n"
-        "━━━━━━━━━━━\n"
-        f"📛 Имя: `{data.get('first_name', '—')}`\n"
-        f"📱 Телефон: `+{data.get('number', '—')}`\n"
-        f"✉️ Email: `{data.get('email', '—')}`\n"
-        f"🏠 Адрес доставки: `{data.get('delivery_address', '—')}`\n"
-        "━━━━━━━━━━━\n"
-        f"📅 Зарегистрирован: `{data.get('date_registory', '—')}`\n"
-        f"🔔 Уведомления: {data.get('notification', '—')}"
+        vip_status='Нет' if data.get('vip_status') is False else 'Активен',
+        number=data.get('number', '—'),
+        email=data.get('email', '—'),
+        delivery_address=data.get('delivery_address', '—'),
+        data_registered=data.get('date_registory', '—')
     )
 
     await message.answer(answer, parse_mode="Markdown", reply_markup=changing_personal_data)
@@ -79,9 +64,6 @@ async def navigation_change_settings_user(callback: CallbackQuery, state: FSMCon
         case "change_address":
             await state.set_state(UserInfo.change_address)
             await callback.message.answer("🏠 Введите новый адрес:")
-        case "change_notifications":
-            await state.set_state(UserInfo.change_notifications)
-            await callback.message.answer("🔔 Включить уведомления? Напишите `on` или `off`.")
     await callback.answer()
 
 
@@ -117,15 +99,4 @@ async def change_email(message: Message, state: FSMContext):
     await state.set_state()
 
 
-@router_user.message(UserInfo.change_notifications)
-async def change_email(message: Message, state: FSMContext):
-    notification_text = message.text.strip()
 
-    if notification_text == "on":
-        await message.answer("✅ Уведомления успешно включены!")
-        await state.set_state()
-    elif notification_text == "off":
-        await message.answer("✅ Уведомления успешно отключены!")
-        await state.set_state()
-    else:
-        await message.answer("❌ Некорректный ввод. Пожалуйста, введите либо “включить”, либо “выключить” уведомления.")

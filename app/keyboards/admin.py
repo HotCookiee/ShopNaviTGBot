@@ -1,7 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 
-from app.keyboards.support import support_inline_keyboard
-
 main_admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🛒 Каталог товаров"),      KeyboardButton(text="🧺 Корзина")],
@@ -20,7 +18,7 @@ admin_panel_keyboard = ReplyKeyboardMarkup(
 )
 moder_user_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="Найти по имени 🔎", callback_data="select_user"),InlineKeyboardButton(text="Все пользователи", callback_data="all_user")],
+        [InlineKeyboardButton(text="Все пользователи", callback_data="all_user")],
     ]
 )
 select_user_keyboard = InlineKeyboardMarkup(
@@ -52,7 +50,7 @@ select_products_keyboard = InlineKeyboardMarkup(
 )
 select_order_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text= "✅ Выполнить",callback_data="perform_order")],
+        [InlineKeyboardButton(text= "✅ Выполнить",callback_data="perform_order"),InlineKeyboardButton(text="🔍 Детали заказа", callback_data="order_details")],
         [InlineKeyboardButton(text="⏪", callback_data="previous_order"),InlineKeyboardButton(text="⏩", callback_data="next_order")],
     ]
 )

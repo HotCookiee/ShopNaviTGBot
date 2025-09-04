@@ -1,20 +1,19 @@
-from datetime import date
-
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.sql import insert, select
 
+import app.templates as templates
 from DB.connection import Database
 from DB.table_data_base import SupportMessage
 from app.keyboards.support import support_inline_keyboard, select_support_inline_keyboard
 from app.states import ContactingSupport
-import app.templates as templates
 
 router_support = Router()
 
+
 @router_support.message(F.text == "💬 Поддержка")
-async def support_main(message: Message, state: FSMContext):
+async def support_main(message: Message):
     await message.answer(templates.user_support_info_msg, reply_markup=support_inline_keyboard)
 
 
@@ -43,27 +42,26 @@ async def contact_support_start(message: Message, state: FSMContext):
 @router_support.callback_query(F.data == "viewing_applications")
 async def viewing_applications(callback_data: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    await state.update_data(SelectSupport = 0)
+    await state.update_data(SelectSupport=0)
 
     async with Database().get_session() as session:
         result_select_complaint_quantity = await session.execute(select(SupportMessage).where(
             SupportMessage.user_telegram_id == data.get("telegram_id")
         ))
         complaint = result_select_complaint_quantity.scalars().all()
-        await state.update_data(ListSupport = complaint)
+        await state.update_data(ListSupport=complaint)
     await callback_data.message.edit_text(
         text=templates.support_user_msg_tpl.format(
             support_id=f"`{complaint[0].id}`",
             support_state=f"`{complaint[0].application_status}`",
             date_the_request_was_created=f"`{complaint[0].date_the_request_was_created}`",
-            time_answer=f"`{complaint[0].time_answer if complaint[0].time_answer  is not None else '-'}`",
+            time_answer=f"`{complaint[0].time_answer if complaint[0].time_answer is not None else '-'}`",
             user_requests=f"`{complaint[0].user_requests}`",
             admin_answer=f"`{complaint[0].admin_answer if complaint[0].admin_answer is not None else '-'}`"
         ),
         reply_markup=select_support_inline_keyboard,
         parse_mode="Markdown"
     )
-
 
 
 @router_support.callback_query(F.data == "next_complaint")
@@ -97,7 +95,6 @@ async def previous_complaint(callback: CallbackQuery, state: FSMContext):
         await callback.answer("")
 
 
-
 async def edit_the_complaint(callback_data: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     complaint = data["ListSupport"]
@@ -107,7 +104,7 @@ async def edit_the_complaint(callback_data: CallbackQuery, state: FSMContext):
             support_id=f"`{complaint[new_page_support].id}`",
             support_state=f"`{complaint[new_page_support].application_status}`",
             date_the_request_was_created=f"`{complaint[new_page_support].date_the_request_was_created}`",
-            time_answer=f"`{complaint[new_page_support].time_answer if complaint[new_page_support].time_answer  is not None else '-'}`",
+            time_answer=f"`{complaint[new_page_support].time_answer if complaint[new_page_support].time_answer is not None else '-'}`",
             user_requests=f"`{complaint[new_page_support].user_requests}`",
             admin_answer=f"`{complaint[new_page_support].admin_answer if complaint[new_page_support].admin_answer is not None else '-'}`"
         ),

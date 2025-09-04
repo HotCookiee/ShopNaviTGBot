@@ -6,7 +6,7 @@ from decimal import Decimal
 import yookassa
 from aiogram import F, Router, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
+from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery, InlineKeyboardButton
 from sqlalchemy.sql import delete, insert, select
 from yookassa import Payment, Configuration
 
@@ -15,6 +15,7 @@ from DB.table_data_base import Order, OrderItems, CartItems, Product
 from app.Handlers.basket import get_basket
 from app.config import PAY_API_KEY
 from app.keyboards.payment import payment_main, payment_info_keyboard
+from app.config import SHOP_ID , SECRET_KEY
 
 router_payment = Router()
 
@@ -22,11 +23,13 @@ router_payment = Router()
 @router_payment.message(F.text == "✅ Оформление заказа")
 async def payment_message(message: Message, state: FSMContext,bot: Bot):
     user_cart = await get_info_from_user_cart(state=state)
-
+    url = await payment_success(chat_id=message.chat.id, user_id=message.from_user.id, state=state)
+    new_but = InlineKeyboardButton(text="Перейти на страницу оплаты", url=url[0])
+    payment_main.inline_keyboard[1][0] = new_but
     await  bot.send_invoice(
         chat_id=message.chat.id,
         title="Выберете способ оплаты",
-        description="Если у вам не работает кнопка оплатить через телеграм, нажмите на кнопку получить ссылку для оплаты.",
+        description="Если у вас не работает кнопка оплатить через телеграм, перейдите по ссылке для оплаты.",
         payload="case_123",
         provider_token=PAY_API_KEY,
         currency="RUB",
@@ -36,11 +39,12 @@ async def payment_message(message: Message, state: FSMContext,bot: Bot):
     )
 
 
+
 @router_payment.callback_query(F.data == "proceed_to_payment")
 async def payment_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await payment_message(callback.message, state=state, bot=bot)
 
-async def get_user_cart(user_id: int, state: FSMContext, message: Message):
+async def get_user_cart(user_id: int, message: Message):
     user_cart = await get_basket(user_id)
     user_check = f"Товары которые вы хотите приобрести: {user_cart}"
     try:
@@ -65,7 +69,7 @@ async def chek_payment_handler(callback: CallbackQuery, state: FSMContext):
 
     try:
         pay = yookassa.Payment.find_one(payment_id)  # позиционный аргумент
-    except Exception as e:
+    except:
         await callback.message.answer("Не удалось проверить платёж. Попробуйте позже.")
         await callback.answer()
         return
@@ -73,7 +77,6 @@ async def chek_payment_handler(callback: CallbackQuery, state: FSMContext):
     if getattr(pay, "status", None) == "succeeded":
         await callback.message.answer("✅ Последняя оплата прошла успешно!")
         await add_result_from_db(
-            message=callback.message,
             state=state,
             total_amount=data.get("AmountRubles") or "0.00",
         )
@@ -86,18 +89,9 @@ async def chek_payment_handler(callback: CallbackQuery, state: FSMContext):
 @router_payment.message(F.successful_payment)
 async def payment_success_from_telegram(message: Message, state: FSMContext):
     payment_info = message.successful_payment
-    await add_result_from_db(message=message, state=state, total_amount=str(payment_info.total_amount))
+    await add_result_from_db(state=state, total_amount=str(payment_info.total_amount))
     await message.answer(
         "Покупка успешно совершена.В течении 40 дней доставка товар будет доставлен в ближайший ПВЗ от указанного адреса.\nПри доставке вам позвонят")
-
-
-@router_payment.callback_query(F.data == "go_payment_from_url")
-async def payment_success_from_web_browser(callback: CallbackQuery, state: FSMContext):
-    result = await payment_success(chat_id=callback.message.chat.id, user_id=callback.from_user.id, state=state)
-    if result is not None:
-        await callback.message.answer(text=f'<a href = "{result[0]}"> Ваша URL ссылка </a>', parse_mode="HTML")
-    else:
-        await callback.message.answer(text=f'При оплате произошла шибка')
 
 
 def format_rub_from_kopecks(kopecks: int) -> str:
@@ -106,12 +100,12 @@ def format_rub_from_kopecks(kopecks: int) -> str:
 
 async def payment_success(chat_id: int, user_id: int, state: FSMContext) -> tuple | None:
     id_key = str(uuid.uuid4())
-    Configuration.account_id = "1139869"
-    Configuration.secret_key = 'test_OethyJWhO2my-fPvNqj824diIU4sqYDzsmS4hjaHEh8'
+    Configuration.account_id = SHOP_ID
+    Configuration.secret_key = SECRET_KEY
 
     user_cart = await get_info_from_user_cart(state=state)
-    total_kopecks = sum(x.amount for x in user_cart)  # Telegram: копейки
-    total_rub_str = format_rub_from_kopecks(total_kopecks)  # ЮKassa: "100.00"
+    total_kopecks = sum(x.amount for x in user_cart)
+    total_rub_str = format_rub_from_kopecks(total_kopecks)
 
     try:
         payment = Payment.create({
@@ -134,7 +128,7 @@ async def payment_success(chat_id: int, user_id: int, state: FSMContext) -> tupl
         return None
 
 
-async def add_result_from_db(message: Message, state: FSMContext, total_amount: str):
+async def add_result_from_db(state: FSMContext, total_amount: str):
     data = await state.get_data()
     async with Database().get_session() as session:
         await session.execute(insert(Order).values(user_id=data.get("user_id"),

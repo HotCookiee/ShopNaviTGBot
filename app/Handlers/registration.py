@@ -1,10 +1,8 @@
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, ReplyKeyboardMarkup, \
-    KeyboardButton, InlineKeyboardMarkup,InlineKeyboardButton
+from aiogram.types import Message
 from sqlalchemy import select
-from pprint import pprint
 
 from DB.connection import Database
 from DB.table_data_base import User, Admin

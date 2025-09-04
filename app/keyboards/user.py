@@ -21,12 +21,6 @@ changing_personal_data = InlineKeyboardMarkup(
                 text="🏠 Изменить адрес",
                 callback_data="change_address"
             )
-        ],
-        [
-            InlineKeyboardButton(
-                text="🔔 Изменить уведомления",
-                callback_data="change_notifications"
-            )
         ]
     ]
 )

@@ -38,7 +38,7 @@ async def get_basket(user_id: int) -> str:
 
 
 @router_basket.callback_query(F.data == "exit_basket")
-async def exit_basket(callback: CallbackQuery, state: FSMContext):
+async def exit_basket(callback: CallbackQuery):
     await callback.answer("Вы вернулись обратно в главное меню", reply_markup=main_menu, show_alert=False)
 
 

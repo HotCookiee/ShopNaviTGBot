@@ -2,8 +2,7 @@ from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardBut
 
 the_main_menu_of_the_catalog_reply = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🔍 Поиск"), KeyboardButton(text="🧺 Корзина")],
-        [KeyboardButton(text="⬅️ Выйти в главное меню")]
+        [KeyboardButton(text="⬅️ Выйти в главное меню"), KeyboardButton(text="🧺 Корзина")],
     ],
     resize_keyboard=True
 )
@@ -21,9 +20,6 @@ add_to_cart_button = InlineKeyboardMarkup(inline_keyboard=[
         InlineKeyboardButton(text="+1", callback_data="add_to_cart_plus_1"),
         InlineKeyboardButton(text='+5', callback_data="add_to_cart_plus_5"),
         InlineKeyboardButton(text='+10', callback_data="add_to_cart_plus_10"),
-    ],
-    [
-        InlineKeyboardButton(text='Выбрать своё количество', callback_data="input_quantity")
     ],
     [
     InlineKeyboardButton(text='❌', callback_data="cancellation")

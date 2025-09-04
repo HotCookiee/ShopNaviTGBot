@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InputMediaPhoto
+from pyexpat.errors import messages
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.sql import update, select
 
@@ -126,11 +127,13 @@ async def viewing_products(query: CallbackQuery, state: FSMContext):
 
 @router_catalog.callback_query(F.data == "update_new_category")
 async def update_category(query: CallbackQuery):
-    await query.answer("✅ Категория сброшена!", show_alert=False)
-    await query.message.edit_text(
+    await query.message.delete()
+    await query.answer("✅ Категория сброшена")
+    await query.message.answer(
         text="📂 Выберите категорию ниже:",
         reply_markup=await load_keyboard_category()
     )
+
 
 
 @router_catalog.callback_query(F.data == "number_page")
@@ -155,12 +158,9 @@ async def cancellation(query: CallbackQuery, state: FSMContext):
 @router_catalog.callback_query(F.data.regexp(r'^add_to_cart_plus_[0-9]+$'))
 async def add_products(query: CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
-    selected_page = state_data['SelectedPage']
-    selected_product = state_data.get("ListProduct")[selected_page - 1]
 
     quantity = query.data.split("_")[-1]
     async with Database().get_session() as session:
-        end_command = None
         user_id = state_data.get("user_id", 0)
         product_id = state_data.get("ProductID", 0)
         if quantity.isdigit():

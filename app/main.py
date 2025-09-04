@@ -1,7 +1,7 @@
 import asyncio
 
 from aiogram import Bot, Dispatcher
-
+from aiogram.types import BotCommandScopeAllPrivateChats, BotCommandScopeAllGroupChats
 from config import TOKEN
 from Handlers import main_router
 

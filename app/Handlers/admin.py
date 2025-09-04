@@ -1,4 +1,5 @@
 import re
+from collections.abc import Sequence
 from datetime import datetime
 from functools import wraps
 
@@ -15,7 +16,7 @@ import app.keyboards.admin as admin_keyboards
 import app.states as states
 import app.templates as templates
 from DB.connection import Database
-from DB.table_data_base import Admin, User, SupportMessage, Product, Order
+from DB.table_data_base import Admin, User, SupportMessage, Product, Order, OrderItems
 from app.keyboards.user import main_menu
 
 router_admin = Router()
@@ -68,7 +69,7 @@ async def verifying_access_from_the_user(message: Message, state: FSMContext):
         except AdminAccessError:
             await message.answer(templates.not_admin_msg, reply_markup=main_menu)
         except Exception as e:
-            await  message.answer(templates.error_msg.format(error=e), reply_markup=main_menu)
+            await  message.answer(templates.error_msg_tpl.format(error=e), reply_markup=main_menu)
 
 
 @router_admin.message(F.text == "🧮 Выполнить SQL запрос")
@@ -124,35 +125,32 @@ async def exit_from_admin_panel(message: Message, state: FSMContext):
 
 @router_admin.message(F.text == "📨 Поддержка")
 @check_admin
-async def exit_from_admin_panel(message: Message, state: FSMContext):
+async def exit_from_admin_panel(message: Message,state: FSMContext):
     await message.answer(templates.welcome_admin_msg,
                          reply_markup=admin_keyboards.admin_support_inline_keyboard, parse_mode="HTML")
 
 
 @router_admin.message(F.text == "👥 Пользователи")
 @check_admin
-async def exit_from_admin_panel(message: Message, state: FSMContext):
-    await message.answer("Выберете действия", reply_markup=admin_keyboards.moder_user_keyboard)
+async def exit_from_admin_panel(message: Message,state: FSMContext):
+    await message.answer(text= "Пока вы можете просматривать всех пользователей 😅", reply_markup=admin_keyboards.moder_user_keyboard)
 
 
 @router_admin.message(F.text == "📦 Товары")
 async def exit_from_admin_panel(message: Message):
-    await message.answer("Выберете действия", reply_markup=admin_keyboards.select_product_keyboard)
+    await message.answer(text= templates.admin_basket, reply_markup=admin_keyboards.select_product_keyboard,parse_mode='HTML')
 
 
 @router_admin.message(F.text == "📋 Заказы")
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
-    temp_keyboard = admin_keyboards.select_order_keyboard
     async with Database().get_session() as session:
         list_order_result = await session.execute(
             select(Order).order_by(Order.status))
-        await state.update_data(ListOrder=list_order_result.scalars().all())
-        await state.update_data(SelectedOrder=0)
-
+    await state.update_data(ListOrder=list_order_result.scalars().all())
+    await state.update_data(SelectOrder=0)
     data = await state.get_data()
-    one_order: Order = data["ListOrder"][data["SelectedOrder"]]
-    print(one_order)
+    one_order: Order = data["ListOrder"][data["SelectOrder"]]
     answer = templates.order_msg_tpl.format(
         id=one_order.id,
         user_id=one_order.user_id,
@@ -176,7 +174,7 @@ async def exit_from_admin_panel(message: Message, state: FSMContext):
 async def perform_order(query: CallbackQuery, state: FSMContext):
     state = await state.get_data()
     async with Database().get_session() as session:
-        order: Order = state["ListOrder"][state["SelectedOrder"]]
+        order: Order = state["ListOrder"][state["SelectOrder"]]
         if order.status == "Выполнено":
             await query.answer("Заказ уже выполнен")
             return
@@ -274,8 +272,6 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
     list_user = data.get("ListUser")
     user: User = list_user[select_user]
 
-
-
     answer = templates.user_msg_tpl.format(
         user_name=user.first_name,
         orders=len(user.orders),
@@ -314,7 +310,6 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
     F.data.in_({"active_support", "archive_of_applications", "previous_active_support", "next_active_support"}))
 async def view_active_support(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-
 
     if callback.data in {"active_support", "archive_of_applications"}:
         async with Database().get_session() as session:
@@ -432,19 +427,19 @@ async def answer_admin_from_support(message: Message, state: FSMContext, bot: Bo
 
 
 @router_admin.callback_query(F.data == "delete_product_by_id")
-async def del_product_by_id(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def del_product_by_id(callback: CallbackQuery, state: FSMContext):
     await callback.answer("Введите ID продукта который хотите удалить")
     await state.set_state(states.Admin.GetIDProduct)
 
 
 @router_admin.callback_query(F.data == "add_product")
-async def add_product(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def add_product(callback: CallbackQuery):
     await callback.message.edit_text(text=templates.add_product_intro_msg, parse_mode="HTML",
                                      reply_markup=admin_keyboards.continue_keyboard)
 
 
 @router_admin.message(states.Admin.GetIDProduct)
-async def delete_product(message: Message, state: FSMContext, bot: Bot):
+async def delete_product(message: Message, state: FSMContext):
     try:
         product_id = int(message.text.strip())
     except ValueError:
@@ -478,7 +473,7 @@ async def delete_product(message: Message, state: FSMContext, bot: Bot):
 
 
 @router_admin.callback_query(StateFilter(states.Admin.Choice), F.data.in_({"confirmation_true", "confirmation_false"}))
-async def choice(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def choice(callback: CallbackQuery, state: FSMContext):
     data = callback.data
     st = await state.get_data()
     if data == "confirmation_true":
@@ -496,49 +491,49 @@ async def choice(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
 
 @router_admin.callback_query(F.data == "continue_true")
-async def start_adding(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def start_adding(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Этап 1: Укажите имя товара")
     await state.set_state(states.AddProduct.ProductName)
 
 
 @router_admin.message(states.AddProduct.ProductName)
-async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+async def get_name_product(message: Message, state: FSMContext):
     await state.update_data(ProductName=message.text)
     await message.answer("тап 2: Укажите описание товара")
     await state.set_state(states.AddProduct.ProductDescription)
 
 
 @router_admin.message(states.AddProduct.ProductDescription)
-async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+async def get_name_product(message: Message, state: FSMContext):
     await state.update_data(ProductDescription=message.text)
     await message.answer("Этап 3: Укажите цену товара")
     await state.set_state(states.AddProduct.ProductPrice)
 
 
 @router_admin.message(states.AddProduct.ProductPrice)
-async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+async def get_name_product(message: Message, state: FSMContext):
     await state.update_data(ProductPrice=message.text)
     await message.answer("Этап 4: Укажите категорию товара")
     await state.set_state(states.AddProduct.ProductCategory)
 
 
 @router_admin.message(states.AddProduct.ProductCategory)
-async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+async def get_name_product(message: Message, state: FSMContext):
     await state.update_data(ProductCategory=message.text)
-    await message.answer("Этап 5: Отправте фото товара")
+    await message.answer("Этап 5: Отправьте фото товара")
     await state.set_state(states.AddProduct.ProductPhoto)
 
 
 @router_admin.message(states.AddProduct.ProductPhoto)
-async def get_name_product(message: Message, state: FSMContext, bot: Bot):
+async def get_name_product(message: Message, state: FSMContext):
     if message.photo:
         await state.update_data(ProductPhoto=message.photo[-1].file_id)
     else:
         await message.answer("❗ Пожалуйста, отправьте фото как изображение, а не как файл.")
-    await completion_creation(message, state, bot)
+    await completion_creation(message, state)
 
 
-async def completion_creation(message: Message, state: FSMContext, bot: Bot):
+async def completion_creation(message: Message, state: FSMContext):
     st = await state.get_data()
     temp_product_info = {
         "name": st.get("ProductName"),
@@ -553,6 +548,29 @@ async def completion_creation(message: Message, state: FSMContext, bot: Bot):
         await session.commit()
 
     await message.answer("Продукт успешно создан!")
-
-    await message.answer_photo(caption="234wer", photo=temp_product_info['photo'])
     await state.set_state()
+
+
+@router_admin.callback_query(F.data == "order_details")
+async def order_details(callback: CallbackQuery, state: FSMContext):
+    async with Database().get_session() as session:
+        data = await state.get_data()
+        select_order = data.get("SelectOrder")
+        list_order = data.get("ListOrder")
+        order: Order = list_order[select_order]
+        print(order.id)
+        result = await session.execute(select(OrderItems)
+                                       .options(selectinload(OrderItems.product),selectinload(OrderItems.order).selectinload(Order.user))
+                                       .where(OrderItems.order_id == order.id))
+        items: Sequence[OrderItems] = result.scalars().all()
+        products = ""
+
+        for item in items:
+            products += f"• <code>{item.product.name}</code> — <b>{item.quantity} шт. @ {item.product.price} ₽ за ед.</b>\n"
+        else:
+            msg_answer = templates.admin_cart_from_user_msg_tpl.format(
+                user_name = items[0].order.user.first_name,
+                telegram_user_id = items[0].order.user.telegram_id,
+                list_products = products
+            )
+        await callback.message.edit_text(text = msg_answer,reply_markup=admin_keyboards.select_order_keyboard,parse_mode = "HTML")
