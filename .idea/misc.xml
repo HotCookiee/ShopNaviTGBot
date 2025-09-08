@@ -3,7 +3,11 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (ShopNavi)" />
   </component>
+<<<<<<< HEAD
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (ShopNavi)" project-jdk-type="Python SDK" />
+=======
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (ShopNaviTGBot)" project-jdk-type="Python SDK" />
+>>>>>>> main
   <component name="TimeTrackingManager">
     <option name="totallyTimeSpent" value="664000" />
   </component>

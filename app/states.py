@@ -64,3 +64,4 @@ class AddProduct(StatesGroup):
     ProductPrice = State()
     ProductCategory = State()
     ProductPhoto = State()
+    ProductQuantity = State()
