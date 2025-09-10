@@ -9,10 +9,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-
   bot:
     build:
-      context: . 
+      context: .
       dockerfile: Dockerfile
 
     container_name: shopnavi_bot
@@ -24,14 +23,12 @@ services:
     environment:
       TOKEN: ${TOKEN}
       POSTGRES_CONFIG: ${POSTGRES_CONFIG}
-      PAY_API_KEY:  ${PAY_API_KEY}
-      SHOP_ID:  ${SHOP_ID}
-      SECRET_KEY:  ${SECRET_KEY}
+      PAY_API_KEY: ${PAY_API_KEY}
+      SHOP_ID: ${SHOP_ID}
+      SECRET_KEY: ${SECRET_KEY}
 
     volumes:
       - .:/app
 
 volumes:
   postgres_data:
-
-    
