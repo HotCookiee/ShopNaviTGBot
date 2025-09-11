@@ -3,10 +3,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.sql import select
 
-from DB.connection import Database
-from DB.table_data_base import CartItems, Product
-from app.keyboards.basket import main_basket
-from app.keyboards.user import main_menu
+from ..DB.connection import Database
+from ..DB.table_data_base import CartItems, Product
+from ..keyboards.basket import main_basket
+from ..keyboards.user import main_menu
 
 router_basket = Router()
 
@@ -22,11 +22,13 @@ async def basket(message: Message, state: FSMContext):
 async def get_basket(user_id: int) -> str:
     answer_massage = "\n"
     async with Database().get_session() as session:
-        result = await session.execute(select(CartItems, Product).join(Product).where(
-            CartItems.user_id == user_id
-        )
+        result = await session.execute(select(CartItems, Product)
+                                       .join(Product)
+                                       .where(CartItems.user_id == user_id)
         )
         products = result.fetchall()
+        if products is None or len(products) == 0:
+            return "Корзина пуста."
         total = 0
         for cart_item, product in products:
             answer_massage += f"• `{product.name}` — {cart_item.quantity} шт. @ {product.price} ₽ за ед.\n"

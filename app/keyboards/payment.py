@@ -6,6 +6,6 @@ payment_info_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 payment_main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Оплатить внутри Telegram", pay=True)],
     [InlineKeyboardButton(text="Перейти на страницу оплаты", url=""),
-     InlineKeyboardButton(text="Проверить статус оплаты", callback_data="chek_payment")
+     InlineKeyboardButton(text="Проверить статус оплаты", callback_data="check_payment")
      ]
 ])

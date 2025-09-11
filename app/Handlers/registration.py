@@ -4,12 +4,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from sqlalchemy import select
 
-from DB.connection import Database
-from DB.table_data_base import User, Admin
-from app.keyboards.user import main_menu
-from app.keyboards.admin import main_admin_keyboard
+from ..DB.connection import Database
+from ..DB.table_data_base import User, Admin
+from ..keyboards.user import main_menu
+from ..keyboards.admin import main_admin_keyboard
 import app.templates as templates
-import app.keyboards.registory as keyboards_registration
+import app.keyboards.registry as keyboards_registration
 
 router_register = Router()
 
@@ -24,7 +24,8 @@ async def handle_contact(message: Message, state: FSMContext):
 
 @router_register.message(CommandStart())
 async def navigation(message: Message):
-    await message.answer(templates.welcome_msg, reply_markup=keyboards_registration.registry_reply_keyboard)
+    await message.answer(templates.welcome_msg,
+                        reply_markup=keyboards_registration.registry_reply_keyboard)
 
 
 async def get_or_create_user_and_fill_userinfo(message: Message, state: FSMContext) -> User:
@@ -60,7 +61,7 @@ async def get_or_create_user_and_fill_userinfo(message: Message, state: FSMConte
         "number": db_user.number,
         "first_name": db_user.first_name,
         "email": db_user.email,
-        "date_registory": db_user.date_registory,
+        "date_registry": db_user.date_registry,
         "vip_status": db_user.vip_status,
         "delivery_address": db_user.delivery_address,
         "role": "admin" if is_admin else "user",

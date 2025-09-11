@@ -4,10 +4,10 @@ from aiogram.types import Message, CallbackQuery
 from sqlalchemy.sql import insert, select
 
 import app.templates as templates
-from DB.connection import Database
-from DB.table_data_base import SupportMessage
-from app.keyboards.support import support_inline_keyboard, select_support_inline_keyboard
-from app.states import ContactingSupport
+from ..DB.connection import Database
+from ..DB.table_data_base import SupportMessage
+from ..keyboards.support import support_inline_keyboard, select_support_inline_keyboard
+from ..states import ContactingSupport
 
 router_support = Router()
 
@@ -111,3 +111,7 @@ async def edit_the_complaint(callback_data: CallbackQuery, state: FSMContext):
         reply_markup=select_support_inline_keyboard,
         parse_mode="Markdown"
     )
+
+@router_support.callback_query(F.data == "back_to_support_main")
+async def back_to_support_main(callback_data: CallbackQuery, state: FSMContext):
+    await callback_data.message.edit_text(templates.user_support_info_msg, reply_markup=support_inline_keyboard)

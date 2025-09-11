@@ -18,8 +18,6 @@ services:
     depends_on:
       - postgres
 
-    dumps:
-      - ./data:/data
     environment:
       TOKEN: ${TOKEN}
       POSTGRES_CONFIG: ${POSTGRES_CONFIG}

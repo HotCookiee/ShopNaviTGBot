@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from app.config import POSTGRES_CONFIG
+from ..config import POSTGRES_CONFIG
 
 class Database:
     __instance = None

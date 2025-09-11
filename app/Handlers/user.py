@@ -6,11 +6,11 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import update, select
 
 import app.templates as templates
-from DB.connection import Database
-from DB.table_data_base import User, Order
-from app.Handlers.db_hendlers import completing_the_task
-from app.keyboards.user import changing_personal_data
-from app.states import UserInfo
+from ..DB.connection import Database
+from ..DB.table_data_base import User, Order
+from ..Handlers.db_handlers import completing_the_task
+from ..keyboards.user import changing_personal_data
+from ..states import UserInfo
 
 router_user = Router()
 
@@ -39,7 +39,7 @@ async def user_menu(message: Message, state: FSMContext):
         number=data.get('number', '—'),
         email=data.get('email', '—'),
         delivery_address=data.get('delivery_address', '—'),
-        data_registered=data.get('date_registory', '—')
+        data_registered=data.get('date_registry', '—')
     )
 
     await message.answer(answer, parse_mode="Markdown", reply_markup=changing_personal_data)

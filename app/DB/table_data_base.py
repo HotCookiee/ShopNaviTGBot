@@ -1,15 +1,18 @@
 from datetime import date
 
 from sqlalchemy import String, Date, Text, LargeBinary, BigInteger
-from sqlalchemy.orm import Mapped, mapped_column, declarative_base, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship,DeclarativeBase
 from sqlalchemy.sql.schema import ForeignKey
+from sqlalchemy.ext.asyncio import AsyncAttrs
 
-__BASE = declarative_base()
+class BASE (AsyncAttrs,DeclarativeBase):
+    __abstract__  = True
 
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
 
 # region Table User
 
-class User(__BASE):
+class User(BASE):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -21,16 +24,15 @@ class User(__BASE):
     delivery_address: Mapped[str] = mapped_column(default="Не указано")
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(50), default="Не указано")
-    date_registory: Mapped[date] = mapped_column(Date, default=date.today)
+    date_registry : Mapped[date] = mapped_column(Date, default=date.today)
 
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
     cart_items: Mapped[list["CartItems"]] = relationship(back_populates="user")
     admins: Mapped["Admin"] = relationship(back_populates="user")
-    notifications: Mapped["Notification"] = relationship(back_populates="user")
     support_message: Mapped["SupportMessage"] = relationship(back_populates="user")
 
 
-class Category(__BASE):
+class Category(BASE):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -40,7 +42,7 @@ class Category(__BASE):
     products: Mapped[list["Product"]] = relationship(back_populates="category")
 
 
-class Product(__BASE):
+class Product(BASE):
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -56,7 +58,7 @@ class Product(__BASE):
     order_items: Mapped["OrderItems"] = relationship(back_populates="product")
 
 
-class Order(__BASE):
+class Order(BASE):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -70,7 +72,7 @@ class Order(__BASE):
     order_items: Mapped[list["OrderItems"]] = relationship(back_populates="order")
 
 
-class CartItems(__BASE):
+class CartItems(BASE):
     __tablename__ = "cart_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -82,7 +84,7 @@ class CartItems(__BASE):
     product: Mapped["Product"] = relationship(back_populates="cart_items")
 
 
-class OrderItems(__BASE):
+class OrderItems(BASE):
     __tablename__ = "order_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -99,7 +101,7 @@ class OrderItems(__BASE):
 
 # region Admin Table
 
-class Admin(__BASE):
+class Admin(BASE):
     __tablename__ = "admins"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -109,7 +111,7 @@ class Admin(__BASE):
     user: Mapped["User"] = relationship(back_populates="admins")
 
 
-class SupportMessage(__BASE):
+class SupportMessage(BASE):
     __tablename__ = "support_messages"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
@@ -125,16 +127,7 @@ class SupportMessage(__BASE):
 
 
 
-class Notification(__BASE):
-    __tablename__ = "notifications"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
-    type: Mapped[str] = mapped_column(String(100), nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
-    text: Mapped[str] = mapped_column(String(250), nullable=False)
-    date: Mapped[date] = mapped_column(Date, nullable=True)
-
-    user: Mapped["User"] = relationship(back_populates="notifications")
 
 
 

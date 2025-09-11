@@ -2,9 +2,19 @@
   "cSpell.words": [
     "Оформление",
     "aiogram",
+    "ammpo",
+    "asyncpg",
+    "dotenv",
+    "HootCookes",
+    "moder",
+    "Navi",
+    "pyexpat",
     "PYTHONUNBUFFERED",
     "selectinload",
-    "HootCookes"
+    "sessionmaker",
+    "Siqo",
+    "userinfo",
+    "yookassa"
   ],
   "cSpell.language": "en,ru"
 }

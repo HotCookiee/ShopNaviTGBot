@@ -9,4 +9,4 @@ RUN pip install -r packages.txt
 
 COPY . .
 
-CMD ["python", "main.py"]
+CMD ["python", "-m", "main"]

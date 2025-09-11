@@ -14,11 +14,10 @@ class UserInfo(StatesGroup):
     notification = State()
     role = State()
     telegram_id = State()
-    date_registory = State()
+    date_registry = State()
     change_email = State()
     change_address = State()
     change_notifications = State()
-
 
 class ProductFlow(StatesGroup):
     ProductID = State()

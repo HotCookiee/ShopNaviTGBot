@@ -10,12 +10,12 @@ from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
 from sqlalchemy.sql import delete, insert, select
 from yookassa import Payment, Configuration
 
-from DB.connection import Database
-from DB.table_data_base import Order, OrderItems, CartItems, Product
-from app.Handlers.basket import get_basket
-from app.config import PAY_API_KEY
-from app.keyboards.payment import payment_main, payment_info_keyboard
-from app.config import SHOP_ID , SECRET_KEY
+from ..DB.connection import Database 
+from ..DB.table_data_base import Order, OrderItems, CartItems, Product
+from ..Handlers.basket import get_basket
+from ..config import PAY_API_KEY
+from ..keyboards.payment import payment_main, payment_info_keyboard
+from ..config import SHOP_ID , SECRET_KEY
 
 router_payment = Router()
 
@@ -23,20 +23,24 @@ router_payment = Router()
 @router_payment.message(F.text == "✅ Оформление заказа")
 async def payment_message(message: Message, state: FSMContext,bot: Bot):
     user_cart = await get_info_from_user_cart(state=state)
-    url = await payment_success(chat_id=message.chat.id, user_id=message.from_user.id, state=state)
-    new_but = InlineKeyboardButton(text="Перейти на страницу оплаты", url=url[0])
-    payment_main.inline_keyboard[1][0] = new_but
-    await  bot.send_invoice(
-        chat_id=message.chat.id,
-        title="Выберете способ оплаты",
-        description="Если у вас не работает кнопка оплатить через телеграм, перейдите по ссылке для оплаты.",
-        payload="case_123",
-        provider_token=PAY_API_KEY,
-        currency="RUB",
-        prices=user_cart,
-        start_parameter="buy_case",
-        reply_markup=payment_main
-    )
+
+    if len(user_cart) > 0: 
+        url = await payment_success(chat_id=message.chat.id, user_id=message.from_user.id, state=state)
+        new_but = InlineKeyboardButton(text="Перейти на страницу оплаты", url=url[0])
+        payment_main.inline_keyboard[1][0] = new_but
+        await  bot.send_invoice(
+            chat_id=message.chat.id,
+            title="Выберете способ оплаты",
+            description="Если у вас не работает кнопка оплатить через телеграм, перейдите по ссылке для оплаты.",
+            payload="case_123",
+            provider_token=PAY_API_KEY,
+            currency="RUB",
+            prices=user_cart,
+            start_parameter="buy_case",
+            reply_markup=payment_main
+        )
+    else:
+        await message.answer("Нельзя оформить покупку с пустой корзиной!")
 
 
 
@@ -58,8 +62,8 @@ async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery, bot: 
     await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
 
-@router_payment.callback_query(F.data == "chek_payment")
-async def chek_payment_handler(callback: CallbackQuery, state: FSMContext):
+@router_payment.callback_query(F.data == "check_payment")
+async def check_payment_handler(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     payment_id = data.get("PaymentID")
     if not payment_id:
@@ -155,7 +159,10 @@ async def add_result_from_db(state: FSMContext, total_amount: str):
 
 async def get_info_from_user_cart(state: FSMContext) -> list[LabeledPrice]:
     data = await state.get_data()
+
     user_cart = await get_basket(data['user_id'])
+    if user_cart == "Корзина пуста.":
+        return []
     products = re.findall(r"• .([\w ]+). ", user_cart)
     prices = re.findall(r"@ ([^₽@ ]+) ₽", user_cart)
     quantity = re.findall(r" — (\d+) шт.", user_cart)

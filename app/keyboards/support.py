@@ -10,6 +10,7 @@ select_support_inline_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text="⏪", callback_data="previous_complaint"),
         InlineKeyboardButton(text="⏩", callback_data="next_complaint"),
+        InlineKeyboardButton(text="🚪 ", callback_data="back_to_support_main"),
     ]
 ])
 

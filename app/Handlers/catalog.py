@@ -1,16 +1,15 @@
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InputMediaPhoto
-from pyexpat.errors import messages
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.sql import update, select
 
-from DB.connection import Database
-from DB.table_data_base import CartItems, Product
-from app.Tools.catalog import load_keyboard_category, get_products_by_category, get_name_category
-from app.keyboards.admin import main_admin_keyboard
-from app.keyboards.cotalog import the_main_menu_of_the_catalog_reply, add_to_cart_button, product_template
-from app.keyboards.user import main_menu
+from ..DB.connection import Database
+from ..DB.table_data_base import CartItems, Product
+from ..Tools.catalog import load_keyboard_category, get_products_by_category, get_name_category
+from ..keyboards.admin import main_admin_keyboard
+from ..keyboards.catalog import the_main_menu_of_the_catalog_reply, add_to_cart_button, product_template
+from ..keyboards.user import main_menu
 import app.templates as templates
 
 router_catalog = Router()
@@ -40,7 +39,6 @@ async def exit_catalog(message: Message, state: FSMContext):
 @router_catalog.callback_query(F.data.regexp(r'^ID_cat_[0-9]+$'))
 async def main_catalog_callback(query: CallbackQuery, state: FSMContext):
     number_category = int(query.data.strip("_")[-1])
-
     list_product = await get_products_by_category(number_category)
     name_category = await get_name_category(number_category)
     max_page = len(list_product)
@@ -198,3 +196,4 @@ async def add_products(query: CallbackQuery, state: FSMContext):
             await session.execute(add_product_to_cart)
             await session.execute(update_quantity_from_product)
             await session.commit()
+            await query.answer(f"✅ Вы добавили {quantity} шт. в корзину", show_alert=True)

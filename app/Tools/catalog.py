@@ -4,8 +4,8 @@ from typing import Any, Sequence
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy import select, Row
 
-from DB.connection import Database
-from DB.table_data_base import Category, Product
+from ..DB.connection import Database
+from ..DB.table_data_base import Category, Product
 
 
 def decor_check_run_time(func):
@@ -13,7 +13,7 @@ def decor_check_run_time(func):
         timer_start = time.time()
         result = await func(*args, **kwargs)
         timer_end = time.time()
-        print(f"Элементы нашлись за: {timer_end - timer_start} ")
+        print(f"Скорость работы метода составила: {timer_end - timer_start} ")
         return result
 
     return wrapper
@@ -29,7 +29,6 @@ async def get_products_by_category(id_category: int) -> Sequence[Row[tuple[Produ
         if list_products:
             return list_products
         else:
-            print("Объекты не найдены")
             return None
 
 
