@@ -6,7 +6,12 @@ from functools import wraps
 from aiogram import Router, F, Bot
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from sqlalchemy import text
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import selectinload
@@ -15,6 +20,7 @@ from sqlalchemy.sql import select, update, delete
 import app.keyboards.admin as admin_keyboards
 import app.states as states
 import app.templates as templates
+from ..DB.connection import Database
 from ..DB.connection import Database
 from ..DB.table_data_base import Admin, User, SupportMessage, Product, Order, OrderItems
 from ..keyboards.user import main_menu
@@ -35,17 +41,22 @@ def check_admin(func):
     async def wrapper(message: Message, state: FSMContext, *args, **kwargs):
         data = await state.get_data()
 
-        if data.get("role") == 'admin':
+        if data.get("role") == "admin":
             async with Database().get_session() as session:
-                result = await session.execute(select(Admin).where(Admin.telegram_id == message.from_user.id))
+                result = await session.execute(
+                    select(Admin).where(Admin.telegram_id == message.from_user.id)
+                )
                 validate_admin = result.scalar_one_or_none()
                 if validate_admin is not None:
                     return await func(message, state, *args, **kwargs)
 
-        await message.answer(text="У вас недостаточно прав для выполнения этой команды.")
+        await message.answer(
+            text="У вас недостаточно прав для выполнения этой команды."
+        )
         return None
 
     return wrapper
+
 
 @router_admin.message(F.text == "🛡 Админ-панель")
 async def admin(message: Message, state: FSMContext):
@@ -56,30 +67,32 @@ async def verifying_access_from_the_user(message: Message, state: FSMContext):
     data = await state.get_data()
     async with Database().get_session() as session:
         result_check = await session.execute(
-            select(Admin).
-            where(
-                Admin.id == data.get('admin_id'),
-            ))
+            select(Admin).where(
+                Admin.id == data.get("admin_id"),
+            )
+        )
         try:
             result = result_check.scalar_one_or_none()
             if result is None or result.telegram_id != message.from_user.id:
                 raise AdminAccessError()
-            await message.answer(templates.welcome_admin_msg,
-                                 reply_markup=admin_keyboards.admin_panel_keyboard, parse_mode="HTML")
+            await message.answer(
+                templates.welcome_admin_msg,
+                reply_markup=admin_keyboards.admin_panel_keyboard,
+                parse_mode="HTML",
+            )
         except AdminAccessError:
             await message.answer(templates.not_admin_msg, reply_markup=main_menu)
         except Exception as e:
-            await  message.answer(templates.error_msg_tpl.format(error=e), reply_markup=main_menu)
+            await message.answer(
+                templates.error_msg_tpl.format(error=e), reply_markup=main_menu
+            )
 
 
 @router_admin.message(F.text == "🧮 Выполнить SQL запрос")
 @check_admin
 async def admin_sql(message: Message, state: FSMContext):
     await state.set_state(states.Admin.InputSQLCommand)
-    await message.answer(
-        templates.sql_commands_info_msg,
-        parse_mode="HTML"
-    )
+    await message.answer(templates.sql_commands_info_msg, parse_mode="HTML")
 
 
 @router_admin.message(states.Admin.InputSQLCommand)
@@ -108,11 +121,14 @@ async def execute_sql_command(message: Message, state: FSMContext):
             result_check = await session.execute(sql_command)
             result = result_check.fetchall()
             result_answer = ""
+
             for i in result:
                 result_answer += f"\n{i}"
             await message.answer(f"Команда выполнена успешно: {result_answer}")
     except Exception as e:
-        await message.answer(f"При выполнении команды:{sql_command} произошла ошибка:{e}")
+        await message.answer(
+            f"При выполнении команды:{sql_command} произошла ошибка:{e}"
+        )
     await state.set_state()
 
 
@@ -120,66 +136,78 @@ async def execute_sql_command(message: Message, state: FSMContext):
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
     await state.set_state()
-    await message.answer("Вы вышли из режима админ панели", reply_markup=admin_keyboards.main_admin_keyboard)
+    await message.answer(
+        "Вы вышли из режима админ панели",
+        reply_markup=admin_keyboards.main_admin_keyboard,
+    )
 
 
 @router_admin.message(F.text == "📨 Поддержка")
 @check_admin
-async def exit_from_admin_panel(message: Message,state: FSMContext):
-    await message.answer(templates.welcome_admin_msg,
-                         reply_markup=admin_keyboards.admin_support_inline_keyboard, parse_mode="HTML")
+async def exit_from_admin_panel(message: Message, state: FSMContext):
+    await message.answer(
+        templates.welcome_admin_msg,
+        reply_markup=admin_keyboards.admin_support_inline_keyboard,
+        parse_mode="HTML",
+    )
 
 
 @router_admin.message(F.text == "👥 Пользователи")
 @check_admin
-async def exit_from_admin_panel(message: Message,state: FSMContext):
-    await message.answer(text= "Пока вы можете просматривать всех пользователей 😅", reply_markup=admin_keyboards.moder_user_keyboard)
+async def exit_from_admin_panel(message: Message, state: FSMContext):
+    await message.answer(
+        text="Пока вы можете просматривать всех пользователей 😅",
+        reply_markup=admin_keyboards.moder_user_keyboard,
+    )
 
 
 @router_admin.message(F.text == "📦 Товары")
 async def exit_from_admin_panel(message: Message):
-    await message.answer(text= templates.admin_basket, reply_markup=admin_keyboards.select_product_keyboard,parse_mode='HTML')
+    await message.answer(
+        text=templates.admin_basket,
+        reply_markup=admin_keyboards.select_product_keyboard,
+        parse_mode="HTML",
+    )
 
 
 @router_admin.message(F.text == "📋 Заказы")
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
-
     async with Database().get_session() as session:
-        list_order_result = await session.execute(
-            select(Order).order_by(Order.status))
-        
+        list_order_result = await session.execute(select(Order).order_by(Order.status))
+
     await state.update_data(ListOrder=list_order_result.scalars().all())
     await state.update_data(SelectOrder=0)
 
     data = await state.get_data()
 
     if len(data["ListOrder"]) == 0:
-        await message.answer(text="Пока что заказов нет", 
-                             parse_mode="HTML",
-                             reply_markup=admin_keyboards.main_admin_keyboard)
+        await message.answer(
+            text="Пока что заказов нет",
+            parse_mode="HTML",
+            reply_markup=admin_keyboards.main_admin_keyboard,
+        )
         return
-    
 
     navig_object = await navigation(
         name_select_object="SelectOrder",
         name_list_object="ListOrder",
         action="show_first",
         state=state,
-        keyboard=admin_keyboards.select_order_keyboard)
-    
-    keyboard,active_order = navig_object[0], navig_object[1]
-    
+        keyboard=admin_keyboards.select_order_keyboard,
+    )
+
+    keyboard, active_order = navig_object[0], navig_object[1]
+
     answer = templates.order_msg_tpl.format(
         id=active_order.id,
         user_id=active_order.user_id,
         registration_date=active_order.registration_date,
         status=active_order.status,
-        total_amount=active_order.total_amount
+        total_amount=active_order.total_amount,
     )
 
     await message.answer(text=answer, parse_mode="HTML", reply_markup=keyboard)
-
 
 
 @router_admin.callback_query(F.data.in_({"perform_order"}))
@@ -191,36 +219,35 @@ async def perform_order(query: CallbackQuery, state: FSMContext):
             await query.answer("Заказ уже выполнен")
             return
 
-        await session.execute(update(Order).where(Order.id == order.id).values(status="Выполнено"))
+        await session.execute(
+            update(Order).where(Order.id == order.id).values(status="Выполнено")
+        )
         await session.commit()
         await query.answer("✅ Заказ выполнен ")
 
 
 @router_admin.callback_query(F.data.in_({"previous_order", "next_order"}))
 async def order_navigation(callback: CallbackQuery, state: FSMContext):
-
     navig_object = await navigation(
         name_select_object="SelectOrder",
         name_list_object="ListOrder",
         action="next" if callback.data == "next_order" else "prev",
         state=state,
-        keyboard=admin_keyboards.select_order_keyboard)
-    
-    keyboard,active_order = navig_object[0], navig_object[1]
-    
+        keyboard=admin_keyboards.select_order_keyboard,
+    )
+
+    keyboard, active_order = navig_object[0], navig_object[1]
+
     answer = templates.order_msg_tpl.format(
         id=active_order.id,
         user_id=active_order.user_id,
         registration_date=active_order.registration_date,
         status=active_order.status,
-        total_amount=active_order.total_amount
+        total_amount=active_order.total_amount,
     )
 
-
     await callback.message.edit_text(
-        text=answer,
-        parse_mode="HTML",
-        reply_markup=keyboard
+        text=answer, parse_mode="HTML", reply_markup=keyboard
     )
     await callback.answer()
 
@@ -239,7 +266,7 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
         if data.get("ListUser") is None or data.get("ListUser") == []:
             await callback.answer("Пользователей нет", show_alert=False)
             return
-        
+
         select_user = data.get("SelectUser", 0)
         total_users = len(data.get("ListUser", []))
 
@@ -270,11 +297,10 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
         number=user.number,
         email=user.email,
         delivery_address=user.delivery_address,
-        data_registered=user.date_registry
+        data_registered=user.date_registry,
     )
     new_button = InlineKeyboardButton(
-        text=f"{select_user + 1}-{len(data.get('ListUser'))}",
-        callback_data="None"
+        text=f"{select_user + 1}-{len(data.get('ListUser'))}", callback_data="None"
     )
 
     rows = list(admin_keyboards.select_user_keyboard.inline_keyboard)
@@ -290,15 +316,21 @@ async def view_all_users(callback: CallbackQuery, state: FSMContext):
     keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     await callback.message.edit_text(
-        text=answer,
-        parse_mode="Markdown",
-        reply_markup=keyboard
+        text=answer, parse_mode="Markdown", reply_markup=keyboard
     )
     await callback.answer()
 
 
 @router_admin.callback_query(
-    F.data.in_({"active_support", "archive_of_applications", "previous_active_support", "next_active_support"}))
+    F.data.in_(
+        {
+            "active_support",
+            "archive_of_applications",
+            "previous_active_support",
+            "next_active_support",
+        }
+    )
+)
 async def view_active_support(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
@@ -311,7 +343,9 @@ async def view_active_support(callback: CallbackQuery, state: FSMContext):
                     .order_by(SupportMessage.date_the_request_was_created.desc())
                 )
             else:
-                query = select(SupportMessage).order_by(SupportMessage.date_the_request_was_created.desc())
+                query = select(SupportMessage).order_by(
+                    SupportMessage.date_the_request_was_created.desc()
+                )
 
             execute_command = await session.execute(query)
             active_tickets = execute_command.scalars().all()
@@ -347,9 +381,11 @@ async def view_active_support(callback: CallbackQuery, state: FSMContext):
         user_telegram_id=str(info_support.user_telegram_id),
         date_the_request_was_created=str(info_support.date_the_request_was_created),
         user_request=str(info_support.user_requests),
-        status_support=str(info_support.application_status)
+        status_support=str(info_support.application_status),
     )
-    new_button = InlineKeyboardButton(text=f"{select_support + 1}-{len(list_support)}", callback_data="None")
+    new_button = InlineKeyboardButton(
+        text=f"{select_support + 1}-{len(list_support)}", callback_data="None"
+    )
 
     rows = list(admin_keyboards.select_active_support_keyboard.inline_keyboard)
 
@@ -364,9 +400,7 @@ async def view_active_support(callback: CallbackQuery, state: FSMContext):
     temp_keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     await callback.message.edit_text(
-        text=answer,
-        parse_mode="HTML",
-        reply_markup=temp_keyboard
+        text=answer, parse_mode="HTML", reply_markup=temp_keyboard
     )
 
 
@@ -395,8 +429,8 @@ async def answer_admin_from_support(message: Message, state: FSMContext, bot: Bo
     users_complaint: SupportMessage = data.get("ListSupport")[data.get("SelectSupport")]
     async with Database().get_session() as session:
         get_admin_id = await session.execute(
-            select(Admin.id).
-            where(Admin.telegram_id == message.from_user.id))
+            select(Admin.id).where(Admin.telegram_id == message.from_user.id)
+        )
         admin_id = get_admin_id.scalar()
         time_answer = datetime.today()
         admin_answer = message.text
@@ -405,16 +439,19 @@ async def answer_admin_from_support(message: Message, state: FSMContext, bot: Bo
             "admin_id": admin_id,
             "time_answer": time_answer,
             "admin_answer": admin_answer,
-            "application_status": "Закрыто"
+            "application_status": "Закрыто",
         }
         await session.execute(
-            update(SupportMessage).
-            where(SupportMessage.id == users_complaint.id).
-            values(**answer))
+            update(SupportMessage)
+            .where(SupportMessage.id == users_complaint.id)
+            .values(**answer)
+        )
         await session.commit()
         await state.set_state()
-        await bot.answer_callback_query(chat_id=users_complaint.user_telegram_id,
-                               text="Ваше обращение было обработано администратором")
+        await bot.answer_callback_query(
+            chat_id=users_complaint.user_telegram_id,
+            text="Ваше обращение было обработано администратором",
+        )
         await message.answer("Успешно!")
 
 
@@ -426,8 +463,11 @@ async def del_product_by_id(callback: CallbackQuery, state: FSMContext):
 
 @router_admin.callback_query(F.data == "add_product")
 async def add_product(callback: CallbackQuery):
-    await callback.message.edit_text(text=templates.add_product_intro_msg, parse_mode="HTML",
-                                     reply_markup=admin_keyboards.continue_keyboard)
+    await callback.message.edit_text(
+        text=templates.add_product_intro_msg,
+        parse_mode="HTML",
+        reply_markup=admin_keyboards.continue_keyboard,
+    )
 
 
 @router_admin.message(states.Admin.GetIDProduct)
@@ -440,17 +480,21 @@ async def delete_product(message: Message, state: FSMContext):
 
     async with Database().get_session() as session:
         result = await session.execute(
-            select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
+            select(Product)
+            .options(selectinload(Product.category))
+            .where(Product.id == product_id)
         )
         product_info: Product = result.scalar_one_or_none()
         if product_info is None:
             await message.answer("Был указан несуществующий ID.")
         else:
             await state.update_data(IDDeleteTheProduct=product_id)
-            answer_msg = templates.product_msg_tpl.format(id=product_info.id,
-                                                          name=product_info.name,
-                                                          quantity=product_info.quantity,
-                                                          category=product_info.category)
+            answer_msg = templates.product_msg_tpl.format(
+                id=product_info.id,
+                name=product_info.name,
+                quantity=product_info.quantity,
+                category=product_info.category,
+            )
 
             await message.answer(
                 text=(
@@ -459,24 +503,33 @@ async def delete_product(message: Message, state: FSMContext):
                     "❗ Это действие необратимо. Подтвердите удаление:"
                 ),
                 reply_markup=admin_keyboards.confirmation_keyboard,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
         await state.set_state(states.Admin.Choice)
 
 
-@router_admin.callback_query(StateFilter(states.Admin.Choice), F.data.in_({"confirmation_true", "confirmation_false"}))
+@router_admin.callback_query(
+    StateFilter(states.Admin.Choice),
+    F.data.in_({"confirmation_true", "confirmation_false"}),
+)
 async def choice(callback: CallbackQuery, state: FSMContext):
     data = callback.data
     st = await state.get_data()
     if data == "confirmation_true":
         async with Database().get_session() as session:
-            await session.execute(delete(Product).where(Product.id == st.get("IDDeleteTheProduct")))
-            await callback.message.edit_text("Удаление прошло успешно",
-                                             reply_markup=admin_keyboards.select_product_keyboard)
+            await session.execute(
+                delete(Product).where(Product.id == st.get("IDDeleteTheProduct"))
+            )
+            await callback.message.edit_text(
+                "Удаление прошло успешно",
+                reply_markup=admin_keyboards.select_product_keyboard,
+            )
             await session.commit()
             await state.set_state()
     elif data == "confirmation_false":
-        await callback.message.edit_text("Удаление отменено", reply_markup=admin_keyboards.select_product_keyboard)
+        await callback.message.edit_text(
+            "Удаление отменено", reply_markup=admin_keyboards.select_product_keyboard
+        )
         await state.set_state()
     else:
         await callback.message.answer("ERROR", reply_markup=None)
@@ -521,7 +574,9 @@ async def get_name_product(message: Message, state: FSMContext):
     if message.photo:
         await state.update_data(ProductPhoto=message.photo[-1].file_id)
     else:
-        await message.answer("❗ Пожалуйста, отправьте фото как изображение, а не как файл.")
+        await message.answer(
+            "❗ Пожалуйста, отправьте фото как изображение, а не как файл."
+        )
     await completion_creation(message, state)
 
 
@@ -550,18 +605,29 @@ async def order_details(callback: CallbackQuery, state: FSMContext):
         select_order = data.get("SelectOrder")
         list_order = data.get("ListOrder")
         order: Order = list_order[select_order]
-        result = await session.execute(select(OrderItems)
-                                       .options(selectinload(OrderItems.product),selectinload(OrderItems.order).selectinload(Order.user))
-                                       .where(OrderItems.order_id == order.id))
-        items: Sequence[OrderItems] = result.scalars().all()
+        result = await session.execute(
+            select(OrderItems)
+            .options(
+                selectinload(OrderItems.product),
+                selectinload(OrderItems.order).selectinload(Order.user),
+            )
+            .where(OrderItems.order_id == order.id)
+        )
+        items: Sequence[OrderItems] = result.scalar
         products = ""
+        
+        
 
         for item in items:
             products += f"• <code>{item.product.name}</code> — <b>{item.quantity} шт. @ {item.product.price} ₽ за ед.</b>\n"
         else:
             msg_answer = templates.admin_cart_from_user_msg_tpl.format(
-                user_name = items[0].order.user.first_name,
-                telegram_user_id = items[0].order.user.telegram_id,
-                list_products = products
+                user_name=items[0].order.user.first_name,
+                telegram_user_id=items[0].order.user.telegram_id,
+                list_products=products,
             )
-        await callback.message.edit_text(text = msg_answer,reply_markup=admin_keyboards.select_order_keyboard,parse_mode = "HTML")
+        await callback.message.edit_text(
+            text=msg_answer,
+            reply_markup=admin_keyboards.select_order_keyboard,
+            parse_mode="HTML",
+        )

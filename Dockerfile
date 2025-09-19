@@ -9,4 +9,8 @@ RUN pip install -r packages.txt
 
 COPY . .
 
-CMD ["python", "-m", "main"]
+CMD ["sh", "-c", "alembic upgrade head && python -m main"]
+
+
+
+

@@ -5,11 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship,DeclarativeBase
 from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
-class BASE (AsyncAttrs,DeclarativeBase):
-    __abstract__  = True
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
-
+class BASE (DeclarativeBase):
+    ...
 # region Table User
 
 class User(BASE):

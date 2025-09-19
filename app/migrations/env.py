@@ -12,8 +12,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 env_path = PROJECT_ROOT / ".env"
 load_dotenv(env_path)
-from ..DB.table_data_base import *
-from ..DB.table_data_base import BASE
+from app.DB.table_data_base import BASE
+from app.DB.table_data_base import User
+
 
 config = context.config
 
