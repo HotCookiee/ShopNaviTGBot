@@ -33,9 +33,9 @@ support_admin_msg_tpl = (
 order_msg_tpl = (
     "<b>📦 Заказ #{id}</b>\n\n"
     "👤 <b>Пользователь ID:</b> <code>{user_id}</code>\n"
-    "📅 <b>Дата оплаты:</b> <code>{registration_date}</code>\n"
-    "📊 <b>Статус:</b> <code>{status}</code>\n"
-    "💰 <b>Сумма:</b> <code>{total_amount} ₽</code>"
+    "📅 <b>Дата оплаты:    </b> <code>{registration_date}</code>\n"
+    "📊 <b>Статус:         </b> <code>{status}</code>\n"
+    "💰 <b>Сумма:          </b> <code>{total_amount} ₽</code>"
 )
 select_product_msg_tpl = (
     "Вы выбрали категорию: {category}"

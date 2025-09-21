@@ -4,8 +4,8 @@ from typing import Any, Sequence
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy import select, Row
 
-from ..DB.connection import Database
-from ..DB.table_data_base import Category, Product
+from ..db.connection import Database
+from ..db.table_data_base import Category, Product
 
 
 def decor_check_run_time(func):

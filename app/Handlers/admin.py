@@ -20,9 +20,9 @@ from sqlalchemy.sql import select, update, delete
 import app.keyboards.admin as admin_keyboards
 import app.states as states
 import app.templates as templates
-from ..DB.connection import Database
-from ..DB.connection import Database
-from ..DB.table_data_base import Admin, User, SupportMessage, Product, Order, OrderItems
+from ..db.connection import Database
+from ..db.connection import Database
+from ..db.table_data_base import Admin, User, SupportMessage, Product, Order, OrderItems
 from ..keyboards.user import main_menu
 from ..Tools.different import navigation
 
@@ -174,7 +174,10 @@ async def exit_from_admin_panel(message: Message):
 @check_admin
 async def exit_from_admin_panel(message: Message, state: FSMContext):
     async with Database().get_session() as session:
-        list_order_result = await session.execute(select(Order).order_by(Order.status))
+        list_order_result = await session.execute(select(Order).
+                                                  options(selectinload(Order.user),
+                                                          selectinload(Order.order_items)).
+                                                  order_by(Order.status))
 
     await state.update_data(ListOrder=list_order_result.scalars().all())
     await state.update_data(SelectOrder=0)
@@ -198,15 +201,15 @@ async def exit_from_admin_panel(message: Message, state: FSMContext):
     )
 
     keyboard, active_order = navig_object[0], navig_object[1]
-
+    
     answer = templates.order_msg_tpl.format(
         id=active_order.id,
-        user_id=active_order.user_id,
+        user_id=active_order.user.telegram_id,
         registration_date=active_order.registration_date,
         status=active_order.status,
-        total_amount=active_order.total_amount,
+        total_amount=int(active_order.total_amount) / 100,
     )
-
+    
     await message.answer(text=answer, parse_mode="HTML", reply_markup=keyboard)
 
 
@@ -468,6 +471,8 @@ async def add_product(callback: CallbackQuery):
         parse_mode="HTML",
         reply_markup=admin_keyboards.continue_keyboard,
     )
+    await callback.answer("")
+    
 
 
 @router_admin.message(states.Admin.GetIDProduct)
@@ -537,40 +542,44 @@ async def choice(callback: CallbackQuery, state: FSMContext):
 
 @router_admin.callback_query(F.data == "continue_true")
 async def start_adding(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Этап 1: Укажите имя товара")
+    await callback.message.answer(" 1️⃣: Укажите имя товара")
     await state.set_state(states.AddProduct.ProductName)
-
 
 @router_admin.message(states.AddProduct.ProductName)
 async def get_name_product(message: Message, state: FSMContext):
     await state.update_data(ProductName=message.text)
-    await message.answer("тап 2: Укажите описание товара")
+    await message.answer("тап 2️⃣: Укажите описание товара")
     await state.set_state(states.AddProduct.ProductDescription)
 
 
 @router_admin.message(states.AddProduct.ProductDescription)
-async def get_name_product(message: Message, state: FSMContext):
+async def get_description_product(message: Message, state: FSMContext):
     await state.update_data(ProductDescription=message.text)
-    await message.answer("Этап 3: Укажите цену товара")
+    await message.answer(" 3️⃣: Укажите цену товара")
     await state.set_state(states.AddProduct.ProductPrice)
 
 
 @router_admin.message(states.AddProduct.ProductPrice)
-async def get_name_product(message: Message, state: FSMContext):
+async def get_price_product(message: Message, state: FSMContext):
     await state.update_data(ProductPrice=message.text)
-    await message.answer("Этап 4: Укажите категорию товара")
+    await message.answer(" 4️⃣: Укажите категорию товара")
     await state.set_state(states.AddProduct.ProductCategory)
 
 
 @router_admin.message(states.AddProduct.ProductCategory)
-async def get_name_product(message: Message, state: FSMContext):
+async def get_category_product(message: Message, state: FSMContext):
     await state.update_data(ProductCategory=message.text)
-    await message.answer("Этап 5: Отправьте фото товара")
+    await message.answer(" 5️⃣: Укажите количество товара")
+    await state.set_state(states.AddProduct.ProductQuantity)
+
+@router_admin.message(states.AddProduct.ProductQuantity)
+async def get_quantity_product(message: Message, state: FSMContext):
+    await state.update_data(ProductQuantity=message.text)
+    await message.answer(" 6️⃣: Отправьте фото товара")
     await state.set_state(states.AddProduct.ProductPhoto)
 
-
 @router_admin.message(states.AddProduct.ProductPhoto)
-async def get_name_product(message: Message, state: FSMContext):
+async def get_photo_product(message: Message, state: FSMContext):
     if message.photo:
         await state.update_data(ProductPhoto=message.photo[-1].file_id)
     else:
@@ -587,6 +596,7 @@ async def completion_creation(message: Message, state: FSMContext):
         "description": st.get("ProductDescription"),
         "price": int(st.get("ProductPrice")),
         "category_id": int(st.get("ProductCategory")),
+        "quantity": int(st.get("ProductQuantity")),
         "photo": st.get("ProductPhoto"),
     }
 
@@ -601,33 +611,66 @@ async def completion_creation(message: Message, state: FSMContext):
 @router_admin.callback_query(F.data == "order_details")
 async def order_details(callback: CallbackQuery, state: FSMContext):
     async with Database().get_session() as session:
-        data = await state.get_data()
-        select_order = data.get("SelectOrder")
-        list_order = data.get("ListOrder")
-        order: Order = list_order[select_order]
-        result = await session.execute(
-            select(OrderItems)
-            .options(
-                selectinload(OrderItems.product),
-                selectinload(OrderItems.order).selectinload(Order.user),
+        try:
+            data = await state.get_data()
+            select_order = data.get("SelectOrder")
+            list_order = data.get("ListOrder")
+            
+            if select_order is None or list_order is None:
+                await callback.message.edit_text(
+                    text="❌ Ошибка: данные заказа не найдены",
+                    reply_markup=admin_keyboards.select_order_keyboard
+                )
+                return
+            
+            if select_order >= len(list_order) or select_order < 0:
+                await callback.message.edit_text(
+                    text="❌ Ошибка: неверный номер заказа",
+                    reply_markup=admin_keyboards.select_order_keyboard
+                )
+                return
+            
+            order: Order = list_order[select_order]
+            
+            result = await session.execute(
+                select(OrderItems)
+                .options(
+                    selectinload(OrderItems.product),
+                    selectinload(OrderItems.order).selectinload(Order.user),
+                )
+                .where(OrderItems.order_id == order.id)
             )
-            .where(OrderItems.order_id == order.id)
-        )
-        items: Sequence[OrderItems] = result.scalar
-        products = ""
-        
-        
 
-        for item in items:
-            products += f"• <code>{item.product.name}</code> — <b>{item.quantity} шт. @ {item.product.price} ₽ за ед.</b>\n"
-        else:
+            items: Sequence[OrderItems] = result.scalars().all()
+            
+            if not items:
+                await callback.message.edit_text(
+                    text="❌ В этом заказе нет товаров",
+                    reply_markup=admin_keyboards.select_order_keyboard,
+                    parse_mode="HTML"
+                )
+                return
+            
+            products = ""
+            for item in items:
+                products += f"• <code>{item.product.name}</code> — <b>{item.quantity} шт. @ {item.price} ₽ за ед.</b>\n"
+            
             msg_answer = templates.admin_cart_from_user_msg_tpl.format(
                 user_name=items[0].order.user.first_name,
                 telegram_user_id=items[0].order.user.telegram_id,
                 list_products=products,
             )
-        await callback.message.edit_text(
-            text=msg_answer,
-            reply_markup=admin_keyboards.select_order_keyboard,
-            parse_mode="HTML",
-        )
+            
+            await callback.message.edit_text(
+                text=msg_answer,
+                reply_markup=admin_keyboards.select_order_keyboard,
+                parse_mode="HTML",
+            )
+            
+        except Exception as e:
+            print(f"Ошибка в order_details: {e}")
+            await callback.message.edit_text(
+                text="❌ Произошла ошибка при загрузке деталей заказа",
+                reply_markup=admin_keyboards.select_order_keyboard,
+                parse_mode="HTML"
+            )

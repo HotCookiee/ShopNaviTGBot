@@ -1,4 +1,4 @@
-from ..DB.connection import Database
+from ..db.connection import Database
 
 db = Database()
 

@@ -6,9 +6,9 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import update, select
 
 import app.templates as templates
-from ..DB.connection import Database
-from ..DB.table_data_base import User, Order
-from ..Handlers.db_handlers import completing_the_task
+from ..db.connection import Database
+from ..db.table_data_base import User, Order
+from ..handlers.db_handlers import completing_the_task
 from ..keyboards.user import changing_personal_data
 from ..states import UserInfo
 

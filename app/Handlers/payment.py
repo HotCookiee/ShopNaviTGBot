@@ -10,12 +10,12 @@ from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
 from sqlalchemy.sql import delete, insert, select
 from yookassa import Payment, Configuration
 
-from ..DB.connection import Database 
-from ..DB.table_data_base import Order, OrderItems, CartItems, Product
-from ..Handlers.basket import get_basket
-from ..config import PAY_API_KEY
+from ..db.connection import Database 
+from ..db.table_data_base import Order, OrderItems, CartItems, Product
+from ..handlers.basket import get_basket
+from ..config import PAY_API_KEY_CONF
 from ..keyboards.payment import payment_main, payment_info_keyboard
-from ..config import SHOP_ID , SECRET_KEY
+from ..config import SHOP_ID_CONF , SECRET_KEY_CONF
 
 router_payment = Router()
 
@@ -33,7 +33,7 @@ async def payment_message(message: Message, state: FSMContext,bot: Bot):
             title="Выберете способ оплаты",
             description="Если у вас не работает кнопка оплатить через телеграм, перейдите по ссылке для оплаты.",
             payload="case_123",
-            provider_token=PAY_API_KEY,
+            provider_token=PAY_API_KEY_CONF,
             currency="RUB",
             prices=user_cart,
             start_parameter="buy_case",
@@ -104,8 +104,8 @@ def format_rub_from_kopecks(kopecks: int) -> str:
 
 async def payment_success(chat_id: int, user_id: int, state: FSMContext) -> tuple | None:
     id_key = str(uuid.uuid4())
-    Configuration.account_id = SHOP_ID
-    Configuration.secret_key = SECRET_KEY
+    Configuration.account_id = SHOP_ID_CONF
+    Configuration.secret_key = SECRET_KEY_CONF
 
     user_cart = await get_info_from_user_cart(state=state)
     total_kopecks = sum(x.amount for x in user_cart)
@@ -135,26 +135,56 @@ async def payment_success(chat_id: int, user_id: int, state: FSMContext) -> tupl
 async def add_result_from_db(state: FSMContext, total_amount: str):
     data = await state.get_data()
     async with Database().get_session() as session:
-        await session.execute(insert(Order).values(user_id=data.get("user_id"),
-                                                   registration_date=datetime.now().date(),
-                                                   delivery_address=data.get("delivery_address"),
-                                                   total_amount=total_amount))
-
-        result_order_id_from_user = await session.execute(select(Order.id).where(Order.user_id == data.get("user_id")))
-        result_user_cart = await session.execute(
-            select(CartItems.product_id, CartItems.quantity, Product.price).join(Product).where(
-                CartItems.user_id == data.get("user_id")))
-
-        user_cart = result_user_cart.all()
-        order_id = result_order_id_from_user.scalar()
-
-        for product, quantity, price in user_cart:
-            await session.execute(
-                insert(OrderItems).values(order_id=order_id, product_id=product, quantity=quantity, price=price))
-
-        await session.execute(delete(CartItems).where(CartItems.user_id == data.get("user_id")))
-
-        await session.commit()
+        try:
+ 
+            result_user_cart = await session.execute(
+                select(CartItems.product_id, CartItems.quantity, Product.price)
+                .join(Product)
+                .where(CartItems.user_id == data.get("user_id"))
+            )
+            user_cart = result_user_cart.all()
+            
+     
+            if not user_cart:
+                print(f"Корзина пользователя {data.get('user_id')} пуста")
+                return
+            
+    
+            result = await session.execute(
+                insert(Order).values(
+                    user_id=data.get("user_id"),
+                    registration_date=datetime.now().date(),
+                    delivery_address=data.get("delivery_address"),
+                    total_amount=total_amount
+                ).returning(Order.id) 
+            )
+            
+            order_id = result.scalar_one() 
+            
+ 
+            for product_id, quantity, price in user_cart:
+                await session.execute(
+                    insert(OrderItems).values(
+                        order_id=order_id,
+                        product_id=product_id,
+                        quantity=quantity,
+                        price=price
+                    )
+                )
+            
+    
+            await session.execute(delete(CartItems).where(CartItems.user_id == data.get("user_id")))
+            
+          
+            await session.commit()
+            
+            print(f"Заказ #{order_id} успешно создан для пользователя {data.get('user_id')}")
+            return order_id 
+            
+        except Exception as e:
+            await session.rollback()
+            print(f"Ошибка при создании заказа для пользователя {data.get('user_id')}: {e}")
+            raise
 
 
 async def get_info_from_user_cart(state: FSMContext) -> list[LabeledPrice]:
@@ -168,5 +198,5 @@ async def get_info_from_user_cart(state: FSMContext) -> list[LabeledPrice]:
     quantity = re.findall(r" — (\d+) шт.", user_cart)
     pri = []
     for prod, price, quant in zip(products, prices, quantity):
-        pri.append(LabeledPrice(label=prod, amount=(int(price) * int(quant))))
+        pri.append(LabeledPrice(label=prod, amount=(int(price) * int(quant) * 100)))
     return pri

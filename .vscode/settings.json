@@ -13,9 +13,11 @@
     "PYTHONUNBUFFERED",
     "selectinload",
     "sessionmaker",
+    "setings",
     "Siqo",
     "userinfo",
     "yookassa"
   ],
-  "cSpell.language": "en,ru"
+  "cSpell.language": "en,ru",
+  "commentTranslate.hover.enabled": true
 }
