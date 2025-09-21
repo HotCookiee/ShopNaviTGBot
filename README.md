@@ -1,4 +1,4 @@
-# 🛍️ ShopNaviTGBot
+<h1 align="center">🛍️ ShopNaviTGBot</h1>
 
 > Современный Telegram-бот для интернет-магазина с полным функционалом e-commerce
 
@@ -60,7 +60,7 @@ ShopNaviTGBot - это полнофункциональный Telegram-бот д
 1. **Клонирование репозитория**
 
    ```bash
-   git clone https://github.com/yourusername/ShopNaviTGBot.git
+   git clone https://github.com/HotCookiee/ShopNaviTGBot.git
    cd ShopNaviTGBot
    ```
 
@@ -69,14 +69,21 @@ ShopNaviTGBot - это полнофункциональный Telegram-бот д
    Отредактируйте файл `.env`:
 
    ```env
-   BOT_TOKEN=your_telegram_bot_token
-   POSTGRES_DB=shopbot_db
-   POSTGRES_USER=shopbot_user
-   POSTGRES_PASSWORD=your_strong_password
-   POSTGRES_HOST=postgres
-   POSTGRES_PORT=5432
-   ADMIN_IDS=123456789,987654321
-   DEBUG=False
+   #*Database config (postgres)
+   POSTGRES_USER     = postgres
+   POSTGRES_PASSWORD = 123
+   NAME_DB           = db_chop
+   PORT              = 5432
+   HOST              = localhost
+
+
+   #Shop config (yookassa)
+   PAY_API_KEY       =
+   SHOP_ID           =
+   SECRET_KEY        =
+
+   #*Telegram bot config
+   TOKEN             =
    ```
 
 3. **Запуск всех сервисов**
@@ -290,7 +297,6 @@ ShopNaviTGBot/
 3. Управляйте товарами, заказами и пользователями
 4. Отвечайте на обращения в поддержку
 
-
 ## 🤝 Вклад в проект
 
 Мы приветствуем вклад в развитие проекта! Чтобы внести свой вклад:
@@ -309,11 +315,8 @@ ShopNaviTGBot/
 
 Если у вас есть вопросы или предложения:
 
-- 📧 **Email:** support@shopnavibot.com
-- 💬 **Telegram:** [@YourUsername](https://t.me/YourUsername)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/yourusername/ShopNaviTGBot/issues)
-
-
+- 💬 **Telegram:** [@SharpingO_o](https://t.me/SharpingO_o)
+- 🐛 **Issues:** [GitHub Issues](https://github.com/HotCookiee/ShopNaviTGBot/issues)
 
 ## 🔧 Мониторинг и логирование
 
@@ -344,7 +347,7 @@ docker-compose ps
 
 <div align="center">
 
-**[⬆ Наверх](#-shopnavitgbot)**
+**[⬆ Наверх](#)**
 
 Сделано с ❤️ для развития e-commerce в Telegram
 
