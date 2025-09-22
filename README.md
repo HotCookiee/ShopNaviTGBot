@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-green.svg)](https://sqlalchemy.org)
-[![aiogram](https://img.shields.io/badge/aiogram-3.0+-red.svg)](https://aiogram.dev)
+[![aiogram](https://img.shields.io/badge/aiogram-3.2+-red.svg)](https://aiogram.dev)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 📋 Описание
@@ -35,14 +35,14 @@ ShopNaviTGBot - это полнофункциональный Telegram-бот д
 ## 🛠️ Технологический стек
 
 - **Язык программирования:** Python 3.13+
-- **Telegram API:** aiogram 3.21+
+- **Telegram API:** aiogram 3.2+
 - **База данных:** PostgreSQL
 - **ORM:** SQLAlchemy 2.0+ (Async)
-- **Миграции:** Alembic 1.16+
+- **Миграции:** Alembic
 - **Архитектура:** FSM (Finite State Machine)
 - **Контейнеризация:** Docker & Docker Compose
-- **Платежная система:** YooKassa 3.6+
-- **HTTP клиент:** aiohttp 3.12+
+- **Платежная система:** YooKassa
+- **HTTP клиент:** aiohttp
 
 ## 📦 Установка и настройка
 
@@ -71,9 +71,9 @@ ShopNaviTGBot - это полнофункциональный Telegram-бот д
    ```env
    #*Database config (postgres)
    POSTGRES_USER     = postgres
-   POSTGRES_PASSWORD = 123
-   NAME_DB           = db_chop
-   PORT              = 5432
+   POSTGRES_PASSWORD = your_strong_password
+   POSTGRES_DB       = shopbot_db
+   DB_PORT           = 5432
    HOST              = localhost
 
 
@@ -120,7 +120,7 @@ ShopNaviTGBot - это полнофункциональный Telegram-бот д
 3. **Установка зависимостей**
 
    ```bash
-   pip install -r requirements.txt
+   pip install -r packages.txt
    ```
 
 4. **Настройка переменных окружения**
@@ -179,7 +179,7 @@ docker-compose exec bot alembic revision --autogenerate -m "description"
 docker-compose -f docker-compose.dev.yml up
 
 # Подключение к базе данных
-docker-compose exec postgres psql -U shopbot_user -d shopbot_db
+docker-compose exec postgres psql -U postgres -d shopbot_db
 
 # Просмотр статуса контейнеров
 docker-compose ps
@@ -233,7 +233,7 @@ ShopNaviTGBot/
 ├── compose.yml              # Docker Compose конфигурация
 ├── Dockerfile               # Docker образ
 ├── main.py                  # Точка входа приложения
-├── packages.txt             # Список пакетов
+├── packages.txt             # Зависимости проекта
 └── README.md                # Документация
 ```
 
