@@ -4,8 +4,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from sqlalchemy import select
 
-from ..temp_db.connection import Database
-from ..temp_db.table_data_base import User, Admin
+from ..db.connection import Database
+from ..db.table_data_base import User, Admin
 from ..keyboards.user import main_menu
 from ..keyboards.admin import main_admin_keyboard
 import app.templates as templates

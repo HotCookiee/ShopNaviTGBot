@@ -1,4 +1,4 @@
-from ..temp_db.connection import Database
+from ..db.connection import Database
 
 db = Database()
 

@@ -4,8 +4,8 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InputMed
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.sql import update, select
 
-from ..temp_db.connection import Database
-from ..temp_db.table_data_base import CartItems, Product
+from ..db.connection import Database
+from ..db.table_data_base import CartItems, Product
 from ..Tools.catalog import load_keyboard_category, get_products_by_category, get_name_category
 from ..keyboards.admin import main_admin_keyboard
 from ..keyboards.catalog import the_main_menu_of_the_catalog_reply, add_to_cart_button, product_template

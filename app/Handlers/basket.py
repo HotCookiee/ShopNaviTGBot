@@ -3,8 +3,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.sql import select
 
-from ..temp_db.connection import Database
-from ..temp_db.table_data_base import CartItems, Product
+from ..db.connection import Database
+from ..db.table_data_base import CartItems, Product
 from ..keyboards.basket import main_basket
 from ..keyboards.user import main_menu
 

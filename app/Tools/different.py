@@ -1,7 +1,7 @@
 from typing import Any
 from aiogram import F
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from ..temp_db.table_data_base import Order
+from ..db.table_data_base import Order
 from aiogram.fsm.context import FSMContext
 from copy import deepcopy
 
