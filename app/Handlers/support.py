@@ -4,8 +4,8 @@ from aiogram.types import Message, CallbackQuery
 from sqlalchemy.sql import insert, select
 
 import app.templates as templates
-from ..db.connection import Database
-from ..db.table_data_base import SupportMessage
+from ..temp_db.connection import Database
+from ..temp_db.table_data_base import SupportMessage
 from ..keyboards.support import support_inline_keyboard, select_support_inline_keyboard
 from ..states import ContactingSupport
 

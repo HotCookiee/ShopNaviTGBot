@@ -10,8 +10,8 @@ from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
 from sqlalchemy.sql import delete, insert, select
 from yookassa import Payment, Configuration
 
-from ..db.connection import Database 
-from ..db.table_data_base import Order, OrderItems, CartItems, Product
+from ..temp_db.connection import Database 
+from ..temp_db.table_data_base import Order, OrderItems, CartItems, Product
 from ..handlers.basket import get_basket
 from ..config import PAY_API_KEY_CONF
 from ..keyboards.payment import payment_main, payment_info_keyboard

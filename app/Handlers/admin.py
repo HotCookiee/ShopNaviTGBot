@@ -20,9 +20,9 @@ from sqlalchemy.sql import select, update, delete
 import app.keyboards.admin as admin_keyboards
 import app.states as states
 import app.templates as templates
-from ..db.connection import Database
-from ..db.connection import Database
-from ..db.table_data_base import Admin, User, SupportMessage, Product, Order, OrderItems
+from ..temp_db.connection import Database
+from ..temp_db.connection import Database
+from ..temp_db.table_data_base import Admin, User, SupportMessage, Product, Order, OrderItems
 from ..keyboards.user import main_menu
 from ..Tools.different import navigation
 
