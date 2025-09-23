@@ -43,6 +43,8 @@ async def main_catalog_callback(query: CallbackQuery, state: FSMContext):
     name_category = await get_name_category(number_category)
     max_page = len(list_product)
 
+    
+
     await state.update_data(SelectedPage=1,
                             ProductID=list_product[0].id,
                             Category=name_category,
@@ -63,7 +65,7 @@ async def main_catalog_callback(query: CallbackQuery, state: FSMContext):
     if len(product_template.inline_keyboard[1]) <= 2:
         product_template.inline_keyboard[1].insert(1, new_button)
     else:
-        product_template.inline_keyboard[1][1] = new_button
+        product_template.inline_keyboard[1][1] = new_button 
 
     selected_product: Product = state_data.get("ListProduct")[selected_page - 1]
     caption = templates.product_msg_tpl.format(
@@ -103,6 +105,9 @@ async def viewing_products(query: CallbackQuery, state: FSMContext):
                             )
     new_button = InlineKeyboardButton(text=f"{selected_page}-{state_data.get("MaxPage")}",
                                       callback_data="number_page")
+    
+
+    
 
     product_template.inline_keyboard[1][1] = new_button
 
@@ -112,7 +117,7 @@ async def viewing_products(query: CallbackQuery, state: FSMContext):
         description = selected_product.description,
         price = selected_product.price,
         quantity = selected_product.quantity,
-        category = state_data.get("Category"),
+        category = state_data.get("Category"), 
     )
 
     await query.answer('')

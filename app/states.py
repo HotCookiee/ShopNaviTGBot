@@ -1,6 +1,14 @@
 from aiogram.fsm.state import StatesGroup, State
 
 
+class UserInfo(StatesGroup):
+    number = State()
+    email = State()
+    delivery_address = State()
+    change_email = State()
+    change_address = State()
+
+
 class ContactingSupport(StatesGroup):
     UserMessage = State()
 

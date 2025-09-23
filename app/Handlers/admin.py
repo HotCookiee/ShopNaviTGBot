@@ -70,7 +70,11 @@ async def verifying_access_from_the_user(message: Message, state: FSMContext):
             select(Admin).where(
                 Admin.id == data.get("admin_id"),
             )
+            
         )
+
+
+
         try:
             result = result_check.scalar_one_or_none()
             if result is None or result.telegram_id != message.from_user.id:

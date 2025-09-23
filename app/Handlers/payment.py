@@ -110,7 +110,7 @@ async def payment_success(chat_id: int, user_id: int, state: FSMContext) -> tupl
     user_cart = await get_info_from_user_cart(state=state)
     total_kopecks = sum(x.amount for x in user_cart)
     total_rub_str = format_rub_from_kopecks(total_kopecks)
-
+    
     try:
         payment = Payment.create({
             "amount": {"value": total_rub_str, "currency": "RUB"},

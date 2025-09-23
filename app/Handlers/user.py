@@ -11,6 +11,7 @@ from ..db.table_data_base import User, Order
 from ..handlers.db_handlers import completing_the_task
 from ..keyboards.user import changing_personal_data
 from ..states import UserInfo
+from ..keyboards.user import changing_personal_data 
 
 router_user = Router()
 
@@ -73,6 +74,7 @@ async def change_email(message: Message, state: FSMContext):
 
     if check_email(email_text):
         command = update(User).where(User.telegram_id == message.from_user.id).values(email=email_text)
+        command = update(User).where(User.telegram_id == message.from_user.id).values(email=email_text) 
 
         await completing_the_task(command)
         await state.update_data(email=email_text)
