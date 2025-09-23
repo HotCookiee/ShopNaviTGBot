@@ -21,7 +21,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
     
-config.set_main_option('sqlalchemy.url', str(os.getenv('POSTGRES_CONFIG')) + '?async_fallback=True')
+config.set_main_option('sqlalchemy.url', f'{os.getenv('POSTGRES_CONFIG')}?async_fallback=True')
 
 
 target_metadata = BASE.metadata
