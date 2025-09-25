@@ -347,7 +347,6 @@ docker-compose ps
 
 <div align="center">
 
-**[⬆ Наверх](#)**
 
 Сделано с ❤️ для развития e-commerce в Telegram
 
